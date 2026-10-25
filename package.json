@@ -1,5 +1,5 @@
 {
-  "name": "inreach2socialmedia",
+  "name": "post-to-social-media-from-inreach",
   "version": "0.1.0",
   "private": true,
   "description": "Post Garmin inReach messages to social media from a Cloudflare Email Worker",

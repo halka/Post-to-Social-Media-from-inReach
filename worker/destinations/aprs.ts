@@ -8,7 +8,7 @@ export const APRS_COMMENT_MAX_LENGTH = 43;
 /** Destination field: APZ is the block for experimental software. */
 const TOCALL = 'APZINR';
 /** Software name sent in the APRS-IS login ("vers <name> <version>"); APRS_APP_NAME overrides it. */
-export const DEFAULT_APRS_APP_NAME = 'inReach2socialmedia';
+export const DEFAULT_APRS_APP_NAME = 'Post-to-Social-Media-from-inReach';
 const APRS_APP_VERSION = '0.1';
 const APRS_TIMEOUT_MS = 10_000;
 
