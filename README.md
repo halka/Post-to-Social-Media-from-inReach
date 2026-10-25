@@ -117,7 +117,11 @@ Add each setting under **Settings → Variables and Secrets** of the Worker, wit
 <details>
 <summary><strong>X (Twitter)</strong></summary>
 
-Create an app in the [X developer portal](https://developer.x.com/) with **Read and write** permission, and generate its access token and secret.
+The X API is paid by use. As of October 2026, a post costs $0.015, or $0.20 if it contains a URL ([X API pricing](https://docs.x.com/x-api/getting-started/pricing)). Every post from this Worker contains the map link, so each one costs $0.20.
+
+1. In the [X developer portal](https://developer.x.com/), create an app in a project and buy credits for the project. Posts are refused when the credits run out or the spend limit is reached.
+2. Set the app's permissions to **Read and write**.
+3. Generate the access token and secret. If you change the permissions later, generate them again: a token keeps the permissions it was created with.
 
 | Variable | Type | Required | Value |
 |---|---|---|---|
@@ -125,6 +129,13 @@ Create an app in the [X developer portal](https://developer.x.com/) with **Read 
 | `X_API_SECRET` | Secret | Required | Secret Token |
 | `X_API_ACCESS_TOKEN` | Secret | Required | Access token |
 | `X_API_ACCESS_TOKEN_SECRET` | Secret | Required | Access token secret |
+
+If a post fails, the Worker's log shows X's reason, such as `Error posting to X: HTTP 403: {"title":"Forbidden","detail":"…"}`.
+
+- **401**: a key or token is wrong. Check the four settings.
+- **403** `You are not allowed to create a Tweet with duplicate content.`: the text is the same as a recent post. A message without a GPS fix uses the fallback location, so sending the same message again gives the same text.
+- **403** `Client Forbidden`: the app is not in a project, or the project has no credits.
+- **403** for any other reason: the app is not **Read and write**, or the access token was generated before the permissions were changed.
 
 </details>
 
@@ -480,14 +491,26 @@ Worker の **設定 → 変数とシークレット** に、示した種類で�
 <details>
 <summary><strong>X（Twitter）</strong></summary>
 
-[X の開発者ポータル](https://developer.x.com/)で **Read and write** 権限のアプリを作り、アクセストークンとシークレットを発行します。
+X API は従量課金です。2026 年 10 月時点で、投稿 1 件に $0.015、URL を含む投稿は $0.20 かかります（[X API の料金](https://docs.x.com/x-api/getting-started/pricing)）。<br>
+この Worker の投稿には必ず地図のリンクが入るので、1 件 $0.20 です。
+
+1. [X の開発者ポータル](https://developer.x.com/)で、プロジェクトの中にアプリを作り、プロジェクトにクレジットを購入します。クレジットがなくなるか、利用上限に達すると投稿できません。
+2. アプリの権限を **Read and write** にします。
+3. アクセストークンとシークレットを発行します。あとで権限を変えたときは、発行し直してください。トークンには発行したときの権限が残ります。
 
 | 変数 | 種類 | 必須 | 値 |
 |---|---|---|---|
-| `X_API_KEY` | シークレット | Consumer Key |  |
+| `X_API_KEY` | シークレット | 必須 | Consumer Key |
 | `X_API_SECRET` | シークレット | 必須 | Secret Token |
 | `X_API_ACCESS_TOKEN` | シークレット | 必須 | アクセストークン |
 | `X_API_ACCESS_TOKEN_SECRET` | シークレット | 必須 | アクセストークンシークレット |
+
+投稿に失敗すると、Worker のログに `Error posting to X: HTTP 403: {"title":"Forbidden","detail":"…"}` のように X が返した理由が出ます。
+
+- **401**：キーかトークンが間違っています。4 つの設定を確認してください。
+- **403** `You are not allowed to create a Tweet with duplicate content.`：最近の投稿と同じ本文です。GPS の位置が取れていないメッセージは代わりの位置を使うので、同じメッセージをもう一度送ると本文も同じになります。
+- **403** `Client Forbidden`：アプリがプロジェクトに入っていないか、プロジェクトにクレジットがありません。
+- **403**（そのほかの理由）：アプリの権限が **Read and write** でないか、権限を変える前に発行したアクセストークンを使っています。
 
 </details>
 
