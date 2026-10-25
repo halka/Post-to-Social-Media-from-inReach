@@ -174,7 +174,6 @@ It counts as posted when at least one relay accepts it.
 
 <details>
 <summary><strong>APRS</strong></summary>
-
 > [!CAUTION]
 > 
 > **You need a valid amateur radio license.**
