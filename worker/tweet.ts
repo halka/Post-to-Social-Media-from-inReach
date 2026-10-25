@@ -10,9 +10,26 @@ import twitterText from "twitter-text";
 
 export const TWEET_MAX_LENGTH = 280;
 
+/**
+ * Bluesky's limit, in graphemes. It is usually looser than X's, but not always:
+ * X counts a long URL as 23, Bluesky counts every character of it.
+ */
+export const BLUESKY_MAX_GRAPHEMES = 300;
+
 /** Length of `text` as X counts it. */
 export function tweetLength(text: string): number {
   return twitterText.parseTweet(text).weightedLength;
+}
+
+function graphemeCount(text: string): number {
+  let count = 0;
+  for (const _ of new Intl.Segmenter().segment(text)) count++;
+  return count;
+}
+
+/** The same text goes to every destination, so it must fit X's `max` and Bluesky's limit. */
+function fits(text: string, max: number): boolean {
+  return tweetLength(text) <= max && graphemeCount(text) <= BLUESKY_MAX_GRAPHEMES;
 }
 
 /**
@@ -34,19 +51,19 @@ export function fitTweet(head: string, tail: string[] = [], max = TWEET_MAX_LENG
     chars = chars.slice(0, 2 * max);
   } else {
     const full = join(head, tail);
-    if (tweetLength(full) <= max) return full;
+    if (fits(full, max)) return full;
   }
   const cut = (n: number) => join(chars.slice(0, n).join("").trimEnd() + ellipsis, tail);
-  const fits = (n: number) => tweetLength(cut(n)) <= max;
+  const cutFits = (n: number) => fits(cut(n), max);
 
   // Find the longest prefix that fits without re-counting after every removed
   // character: double the length until it stops fitting, then binary search.
   // Each count only covers about as much text as the post itself, however long the head is.
-  if (chars.length > 1 && fits(1)) {
+  if (chars.length > 1 && cutFits(1)) {
     let lo = 1; // fits
     let hi = chars.length - 1; // longest candidate (the full head did not fit)
     for (let n = 2; n < hi; n *= 2) {
-      if (!fits(n)) {
+      if (!cutFits(n)) {
         hi = n - 1;
         break;
       }
@@ -54,7 +71,7 @@ export function fitTweet(head: string, tail: string[] = [], max = TWEET_MAX_LENG
     }
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
-      if (fits(mid)) lo = mid;
+      if (cutFits(mid)) lo = mid;
       else hi = mid - 1;
     }
     return cut(lo);

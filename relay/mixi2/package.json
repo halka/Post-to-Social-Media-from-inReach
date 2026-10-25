@@ -1,0 +1,16 @@
+{
+  "name": "inreach2socialmedia-mixi2-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Receive the Worker's webhook and post it to mixi2",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "mixi2-js": "1.5.3"
+  }
+}

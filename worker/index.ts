@@ -1,6 +1,9 @@
 import * as PostalMime from 'postal-mime';
-import xApiPost from '@kworq/x-api-post';
-import { buildPostText } from './post-text.js';
+import { DESTINATIONS } from './destinations/index.js';
+import { buildPost } from './post-text.js';
+
+// The Durable Object that runs the mixi2 relay container; see wrangler.toml in README.md.
+export { Mixi2Relay } from './mixi2-container.js';
 
 /** An integer var from the Worker's env that passes `valid`; unset or invalid → `fallback`. */
 function precisionVar(name: string, value: unknown, fallback: number, valid: (n: number) => boolean): number {
@@ -37,32 +40,27 @@ export default {
 
 		// 1. Message and coordinates → post text
 		// An empty trigger would match every subject, so treat it as unset.
-		const text = buildPostText(subject, body, {
+		const post = buildPost(subject, body, {
 			geohashPrecision: precisionVar('GEOHASH_PRECISION', env.GEOHASH_PRECISION, 9, (n) => n >= 1 && n <= 12),
 			maidenheadPrecision: precisionVar('MAIDENHEAD_PRECISION', env.MAIDENHEAD_PRECISION, 6, (n) => [2, 4, 6, 8, 10].includes(n)),
 			subjectTrigger: env.INREACH_SUBJECT_TRIGGER || undefined,
 		});
-		if (text === '') {
+		if (post.text === '') {
 			console.log(`Failed: empty post text from ${from}`);
 			return;
 		}
 
-		// 2. Post to X
-		try {
-			const xApiClient = new xApiPost({
-				X_API_KEY: env.X_API_KEY || '',
-				X_API_SECRET: env.X_API_SECRET || '',
-				X_API_ACCESS_TOKEN: env.X_API_ACCESS_TOKEN || '',
-				X_API_ACCESS_TOKEN_SECRET: env.X_API_ACCESS_TOKEN_SECRET || '',
-			});
-			const response = await xApiClient.postTweetWithMedia(text);
-			// x-api-post resolves with the error body when X rejects a post,
-			// so it succeeded only if X returned the new post's id.
-			if (response?.data?.id) console.log(`Posted: ${response.data.id}`);
-			else console.error('Error posting tweet:', JSON.stringify(response), text);
-		} catch (error) {
-			// Missing credentials (the constructor throws) or a network failure.
-			console.error('Error posting tweet:', error, text);
+		// 2. Post to every destination whose settings are present, in parallel;
+		// one failing does not stop the others.
+		const destinations = DESTINATIONS.filter((d) => d.configured(env));
+		if (destinations.length === 0) {
+			console.error('No destination configured: set the secrets of at least one service');
+			return;
 		}
+		const results = await Promise.allSettled(destinations.map((d) => d.post(post, env)));
+		results.forEach((result, i) => {
+			if (result.status === 'fulfilled') console.log(`Posted to ${destinations[i].name}: ${result.value}`);
+			else console.error(`Error posting to ${destinations[i].name}:`, result.reason, post.text);
+		});
 	},
 };

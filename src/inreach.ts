@@ -32,11 +32,6 @@ export interface InReachParseOptions {
   subjectTrigger?: string;
 }
 
-/** True when a (decoded) subject is an inReach message notification. */
-export function isInReachSubject(subject: string, subjectTrigger = INREACH_SUBJECT_TRIGGER): boolean {
-  return subject.includes(subjectTrigger);
-}
-
 /**
  * Parse an already-decoded subject and plain-text body, e.g. from postal-mime,
  * the Gmail API or Google Apps Script (`getSubject()` / `getPlainBody()`).
@@ -82,18 +77,6 @@ export function parseInReachFields(
   const result = parseInReachContent(fields.subject.trim(), fields.text, options);
   if (!result) return null;
   return fields.from === undefined ? result : { ...result, from: fields.from };
-}
-
-/**
- * Parse already-decoded text whose first non-empty line is the subject and
- * the rest is the body (e.g. an email copied from a mail client).
- * Returns null when that first line does not contain the inReach trigger.
- */
-export function parseInReachText(text: string, options: InReachParseOptions = {}): InReachMessage | null {
-  const lines = text.replace(/\r\n?/g, "\n").split("\n");
-  const first = lines.findIndex((line) => line.trim() !== "");
-  if (first === -1) return null;
-  return parseInReachContent(lines[first].trim(), lines.slice(first + 1).join("\n"), options);
 }
 
 /** Lines where the Garmin boilerplate begins (Japanese and English templates). */

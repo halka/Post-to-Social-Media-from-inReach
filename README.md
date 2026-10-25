@@ -1,4 +1,4 @@
-# Post to SocialMeadia from inReach
+# Post to Social Media from inReach
 
 [English](#english) | [日本語](#日本語)
 
@@ -6,120 +6,322 @@
 
 ## English
 
-Post messages sent from a Garmin inReach satellite communicator to X (Twitter), together with the location they were sent from.
-
-### How it works
+Post messages sent from a Garmin inReach satellite communicator to social media and other services, together with the location they were sent from.
 
 ```
-inReach ──(satellite)──▶ Garmin ──(notification email)──▶ Cloudflare Email Routing
-                                                              │
-                                                              ▼
-                                                   Cloudflare Email Worker ──▶ X
+inReach ──(satellite)──▶ Garmin ──(email)──▶ Cloudflare Email Routing ──▶ this Worker ──▶ X / Bluesky / Mastodon / Misskey / mixi2 / Nostr / APRS / webhook
 ```
 
-1. Set the inReach to send messages to an email address that Cloudflare Email Routing delivers to this Worker.
-2. The Worker parses Garmin's notification email and extracts the message text and the GPS coordinates.
-3. It builds a post and publishes it to X.
+Use any combination of destinations: a destination is used when its settings are present, and the others are skipped. Each message is sent to all of them at once, and one failing does not stop the rest.
 
-An example post:
+### Quick start
+
+You need a Cloudflare account with a domain that has Email Routing enabled, Node.js, and an account on at least one [destination](#destinations).
+
+**1. Get the code and install it**
+
+```sh
+git clone https://github.com/halka/inReach2socialmedia.git
+cd inReach2socialmedia
+npm install
+npx wrangler login
+```
+
+**2. Create `wrangler.toml`** in the project folder. This repository does not include one. Copy this as it is. All settings are made in the Cloudflare dashboard, not in this file.
+
+```toml
+name = "inreach2socialmedia"
+main = "worker/index.ts"
+compatibility_date = "2026-10-01"
+# Keep the variables set in the Cloudflare dashboard when deploying again.
+keep_vars = true
+```
+
+**3. Deploy**
+
+```sh
+npx wrangler deploy
+```
+
+**4. Add the settings in the Cloudflare dashboard.** Go to **Workers & Pages → inreach2socialmedia → Settings → Variables and Secrets**, and click **Add** for each setting. Choose the type **Text** for ordinary values and **Secret** for passwords, tokens and keys. Click **Deploy** (or **Save**) to apply them.
+
+- `allowed` (Text) is required. It lists the sender addresses that may post, as JSON: `{"address": ["sender@example.com"]}`. Use the address your inReach messages come from: send one message from the inReach to your own email address and look at its `From:`. Mail from any other address is rejected.
+- Then add the settings of each destination you want. See [Destinations](#destinations).
+
+**5. Route an email address to the Worker.** In the Cloudflare dashboard, open your domain, go to **Email → Email Routing → Routing rules**, and create a custom address (for example `inreach-xxxx@example.com`) with the action **Send to a Worker** → `inreach2socialmedia`. Choose an address that is hard to guess.
+
+**6. Send a message.** On the inReach (or in the Garmin Explore app), add that address as a contact and send it a message. It is posted within a minute or so.
+
+If nothing is posted, run `npx wrangler tail` and send another message to see the Worker's log. It shows each destination's result.
+
+### Destinations
+
+Add each setting under **Settings → Variables and Secrets** of the Worker, with the type shown. Settings marked optional can be left out. Click a destination to open its steps.
+
+<details>
+<summary><strong>X (Twitter)</strong></summary>
+
+Create an app in the [X developer portal](https://developer.x.com/) with **Read and write** permission, and generate its access token and secret.
+
+| Variable | Type | Value |
+|---|---|---|
+| `X_API_KEY` | Secret | API key |
+| `X_API_SECRET` | Secret | API key secret |
+| `X_API_ACCESS_TOKEN` | Secret | Access token |
+| `X_API_ACCESS_TOKEN_SECRET` | Secret | Access token secret |
+
+</details>
+
+<details>
+<summary><strong>Bluesky</strong></summary>
+
+Create an app password in Bluesky under **Settings → Privacy and security → App passwords**. Do not use your main password.
+
+| Variable | Type | Value |
+|---|---|---|
+| `BLUESKY_IDENTIFIER` | Text | Your handle, e.g. `you.bsky.social` |
+| `BLUESKY_APP_PASSWORD` | Secret | The app password |
+| `BLUESKY_SERVICE` | Text | Optional. Your PDS, e.g. `https://your-pds.example`, if your account is not on bsky.social |
+
+</details>
+
+<details>
+<summary><strong>Mastodon</strong></summary>
+
+On your server, go to **Preferences → Development → New application**, give it the `write:statuses` scope, and copy **Your access token**.
+
+| Variable | Type | Value |
+|---|---|---|
+| `MASTODON_URL` | Text | Your server, e.g. `https://mastodon.social` |
+| `MASTODON_ACCESS_TOKEN` | Secret | The access token |
+
+</details>
+
+<details>
+<summary><strong>Misskey</strong></summary>
+
+On your server, go to **Settings → API → Generate access token** and allow **Compose or delete notes**.
+
+| Variable | Type | Value |
+|---|---|---|
+| `MISSKEY_URL` | Text | Your server, e.g. `https://misskey.io` |
+| `MISSKEY_ACCESS_TOKEN` | Secret | The access token |
+
+</details>
+
+<details>
+<summary><strong>Nostr</strong></summary>
+
+Use your private key. Consider a key just for this rather than your main one.
+
+| Variable | Type | Value |
+|---|---|---|
+| `NOSTR_PRIVATE_KEY` | Secret | `nsec1…` or 64 hex characters |
+| `NOSTR_RELAYS` | Text | Optional. Relays separated by commas, e.g. `wss://relay.damus.io, wss://your.relay.example`. Default: `wss://relay.damus.io`, `wss://nos.lol` and `wss://yabu.me` |
+
+It counts as posted when at least one relay accepts it.
+
+</details>
+
+<details>
+<summary><strong>APRS</strong></summary>
+> [!WARN]
+> YOU NEED VALID AMATEUR RADIO OPERATOR LISENCE.
+> 
+Your position appears on APRS maps such as [aprs.fi](https://aprs.fi/), with the message as the comment. This needs an amateur radio callsign and its APRS-IS passcode.
+
+| Variable | Type | Value |
+|---|---|---|
+| `APRS_CALLSIGN` | Text | Your callsign with an SSID if you like, e.g. `JA1ABC-7` |
+| `APRS_PASSCODE` | Secret | The APRS-IS passcode for the callsign |
+| `APRS_SERVER` | Text | Optional. One of the servers below. Default: `rotate.aprs2.net:14580` |
+| `APRS_SYMBOL` | Text | Optional. One of the map symbols below, e.g. `H[`. Default: `/[` |
+| `APRS_APP_NAME` | Text | Optional. The software name sent when logging in to APRS-IS, shown on the server's status page. Spaces become `-`. Default: `inReach2socialmedia` |
+
+- The report carries the position, so the comment is only the message: no geohash, grid or map link. It is ASCII only: full-width letters and digits become half-width, and Japanese and other non-ASCII characters are removed. It is put on one line and cut to 43 characters (the APRS limit). A message written only in Japanese is sent as the position with no comment.
+- Messages without a GPS fix are not sent to APRS, so the fallback location is never reported as your position.
+
+**Servers.** The report is sent to APRS-IS over the internet. These are the [APRS-IS tier 2](https://www.aprs2.net/) servers:
+
+| Server | Region |
+|---|---|
+| `rotate.aprs2.net:14580` | Any server worldwide (default) |
+| `asia.aprs2.net:14580` | Asia |
+| `noam.aprs2.net:14580` | North America |
+| `euro.aprs2.net:14580` | Europe |
+| `aunz.aprs2.net:14580` | Australia and New Zealand |
+| `soam.aprs2.net:14580` | South America |
+
+**Map symbols.** Enter the two characters as they are. The list follows the current APRS 1.2 symbol set ([symbolsX.txt](https://www.aprs.org/symbols/symbolsX.txt) and its overlay extension [symbols-new.txt](https://www.aprs.org/symbols/symbols-new.txt), revised 17 Mar 2021):
+
+| Group | Symbol | Emoji | Meaning |
+|---|---|---|---|
+| People | `/[` | 🧍 | Person (default) |
+|  | `H[` | 🥾 | Hiker |
+|  | `R[` | 🏃 | Runner |
+|  | `S[` | ⛷️ | Skier |
+|  | `B[` | 👶 | Baby stroller |
+| On land | `/b` | 🚲 | Bicycle |
+|  | `/<` | 🏍️ | Motorcycle |
+|  | `/e` | 🐎 | Horse |
+|  | `/>` | 🚗 | Car |
+|  | `/j` | 🚙 | Jeep |
+|  | `\k` | 🚙 | SUV |
+|  | `4k` | 🛻 | 4x4 |
+|  | `Ak` | 🛞 | ATV |
+|  | `/R` | 🚐 | Recreational vehicle |
+|  | `/k` | 🚚 | Truck |
+|  | `/U` | 🚌 | Bus |
+|  | `/*` | 🛷 | Snowmobile |
+| Rail | `/=` | 🚂 | Train (generic) |
+|  | `B=` | 🚋 | Tram, streetcar, trolley |
+|  | `C=` | 🚆 | Commuter train |
+|  | `D=` | 🚆 | Diesel train |
+|  | `E=` | 🚃 | Electric train |
+|  | `F=` | 🚃 | Freight train |
+|  | `G=` | 🚡 | Gondola, ropeway |
+|  | `H=` | 🚄 | High-speed rail |
+|  | `I=` | 🚞 | Inclined rail (funicular) |
+|  | `L=` | 🚈 | Elevated railway |
+|  | `M=` | 🚝 | Monorail |
+|  | `P=` | 🚆 | Passenger train |
+|  | `S=` | 🚂 | Steam locomotive |
+|  | `T=` | 🚉 | Station |
+|  | `U=` | 🚇 | Subway |
+|  | `X=` | 🚞 | Excursion train |
+| On water | `/C` | 🛶 | Canoe |
+|  | `/Y` | ⛵ | Sailboat (yacht) |
+|  | `/s` | 🚤 | Power boat |
+|  | `Bs` | 🛥️ | Pleasure boat |
+|  | `Js` | 🌊 | Jet ski |
+|  | `Ds` | 🤿 | Diving |
+|  | `Fs` | 🎣 | Fishing |
+| In the air | `/'` | 🛩️ | Small aircraft |
+|  | `/^` | ✈️ | Large aircraft |
+|  | `/X` | 🚁 | Helicopter |
+|  | `/g` | 🛩️ | Glider |
+|  | `/O` | 🎈 | Balloon |
+|  | `D^` | 🛸 | Drone |
+| Places | `/;` | ⛺ | Portable operation (tent) |
+|  | `S;` | ⛰️ | Summits on the Air (SOTA) |
+|  | `I;` | 🏝️ | Islands on the Air (IOTA) |
+|  | `\;` | 🏞️ | Park, picnic |
+|  | `/-` | 🏠 | House |
+
+A symbol starting with a letter or digit, such as `H[`, is an overlay from the APRS 1.2 extension. Some apps draw it as the base symbol with the letter on top. The emoji are only a guide: maps show the APRS icon.
+
+</details>
+
+<details>
+<summary><strong>Webhook</strong></summary>
+
+| Variable | Type | Value |
+|---|---|---|
+| `WEBHOOK_URL` | Secret | The webhook URL. For several, separate them with spaces or commas |
+
+Each message is sent as a JSON POST:
+
+```json
+{
+  "text": "…", "content": "…",
+  "message": "…", "latitude": 35.683851, "longitude": 139.753973,
+  "geohash": "xn77h0j9r", "maidenhead": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
+  "isFallbackLocation": false
+}
+```
+
+`text` and `content` are both the finished post text. Slack incoming webhooks read `text` and Discord webhooks read `content`, so their URLs work as they are. The other fields are its parts, for services that build their own post (n8n, Zapier, your own server). They are `null` when the email was not an inReach notification. `isFallbackLocation` is `true` when the message had no GPS fix and the location is the Imperial Palace. `message` is never shortened.
+
+</details>
+
+<details>
+<summary><strong>mixi2</strong></summary>
+
+Posts go to mixi2 with [mixi2-js](https://mixi2.js.org/). mixi2-js needs Node.js and cannot run in the Worker itself: the mixi2 API accepts only gRPC, which Workers cannot send, and its protobuf library generates code at runtime, which Workers forbid. So it runs in a [Cloudflare Container](https://developers.cloudflare.com/containers/) next to the Worker: [`relay/mixi2/`](relay/mixi2/), started by the Worker when a message arrives and asleep otherwise. Only the Worker can reach it. mixi2 posts are limited to 149 characters, so the relay rebuilds the post: it keeps the location lines and shortens the message.
+
+This needs the **Workers Paid** plan (Containers are not on the free plan) and [Docker](https://docs.docker.com/get-started/get-docker/) running on the computer you deploy from, to build the container image.
+
+1. On the [mixi2 Developer Platform](https://developer.mixi.social/), apply for access, create an application and note its **client ID** and **client secret**.
+2. Add this to `wrangler.toml`, then run `npx wrangler deploy` again:
+
+   ```toml
+   # mixi2: runs relay/mixi2 in a Cloudflare Container
+   [[containers]]
+   class_name = "Mixi2Relay"
+   scheduling_policy = "durable_object"
+   
+   [containers.images.base]
+   dockerfile = "./relay/mixi2/Dockerfile"
+   
+   [[durable_objects.bindings]]
+   name = "MIXI2_RELAY"
+   class_name = "Mixi2Relay"
+   
+   [exports.Mixi2Relay]
+   type = "durable-object"
+   storage = "sqlite"
+   ```
+
+3. Add the settings to the Worker:
+
+   | Variable | Type | Value |
+   |---|---|---|
+   | `MIXI2_CLIENT_ID` | Text | Client ID |
+   | `MIXI2_CLIENT_SECRET` | Secret | Client secret |
+
+   After changing them, the container picks them up the next time it starts. It stops 2 minutes after the last message.
+
+**Without the paid plan:** run `relay/mixi2/` on any other host that runs Node.js 20.19 or later or a Docker image (Cloud Run, Fly.io, Render, your own server) over HTTPS, and connect it as a webhook instead of steps 2 and 3:
+
+1. Make a long random token, for example with `node -e "console.log(crypto.randomUUID())"`.
+2. Deploy `relay/mixi2/` with the environment variables `MIXI2_CLIENT_ID`, `MIXI2_CLIENT_SECRET` and `RELAY_TOKEN` (the token). On Google Cloud Run, for example:
+
+   ```sh
+   gcloud run deploy inreach-mixi2 --source relay/mixi2 --allow-unauthenticated \
+     --set-env-vars MIXI2_CLIENT_ID=…,MIXI2_CLIENT_SECRET=…,RELAY_TOKEN=…
+   ```
+
+   On your own server, run `npm install` and then `npm start` in `relay/mixi2/` (it listens on `PORT`, 8080 by default).
+3. Add `https://<your relay>/?token=<RELAY_TOKEN>` to the Worker's `WEBHOOK_URL` (Secret). If you already have other webhooks, put them all in `WEBHOOK_URL`, separated by spaces.
+
+</details>
+
+### What gets posted
 
 ```
-VTECH SOUND, GREAT AGAIN 
+MAKE VTEC, GREAT AGAIN
+Geohash: xn77h0j9r
+Grid: PM95vq
 https://maps.google.com/?q=35.683851,139.753973
-xn77h0j9r
-PM95vq
 ```
-
-The lines are:
 
 - the message you typed on the inReach
-- a Google Maps link to the location
 - the [geohash](https://en.wikipedia.org/wiki/Geohash) of the location
-- the [Maidenhead locator](https://en.wikipedia.org/wiki/Maidenhead_Locator_System) of the location
+- the [Maidenhead locator](https://en.wikipedia.org/wiki/Maidenhead_Locator_System) (grid locator) of the location
+- a Google Maps link to the location
 
-The post is fitted to X's 280-character limit, counted the way X counts it with [twitter-text](https://github.com/twitter/twitter-text): Japanese and emoji count as 2, and every URL or bare domain counts as 23. If it is too long, the message is shortened and ends in "…". The location lines are kept.
+The same text goes to every destination, so it is fitted to the strictest limits: X's 280, counted the way X counts it with [twitter-text](https://github.com/twitter/twitter-text) (Japanese and emoji count as 2, every URL or bare domain counts as 23), and Bluesky's 300 characters. If it is too long, the message is shortened and ends in "…". The location lines are kept.
 
 When a message has no GPS fix (Garmin sends `Lat 0 Lon 0`), the Imperial Palace in Tokyo is used as the location. Emails that are not inReach notifications are posted as their first non-empty line.
 
-### Setup
+### Other settings
 
-Requirements: a Cloudflare account with Email Routing enabled on your domain, [Wrangler](https://developers.cloudflare.com/workers/wrangler/), and an X developer app with read and write access.
-
-1. Install the dependencies:
-
-   ```sh
-   npm install
-   ```
-
-2. Create `wrangler.toml`. This repository does not include one. For example:
-
-   ```toml
-   name = "inreach2socialmedia"
-   main = "worker/index.ts"
-   compatibility_date = "2026-10-01"
-
-   [vars]
-   allowed = '{"address": ["no.reply.inreach@garmin.com"]}'
-   GEOHASH_PRECISION = "9"
-   MAIDENHEAD_PRECISION = "6"
-   # INREACH_SUBJECT_TRIGGER = "さんからのinReachメッセージ"
-   ```
-
-3. Store the X API credentials as secrets:
-
-   ```sh
-   npx wrangler secret put X_API_KEY
-   npx wrangler secret put X_API_SECRET
-   npx wrangler secret put X_API_ACCESS_TOKEN
-   npx wrangler secret put X_API_ACCESS_TOKEN_SECRET
-   ```
-
-4. Deploy, then add an Email Routing rule that sends your chosen address to this Worker:
-
-   ```sh
-   npx wrangler deploy
-   ```
-
-### Configuration
+Add these as **Text** under **Settings → Variables and Secrets** of the Worker.
 
 | Variable | Default | Description |
 |---|---|---|
 | `allowed` | (required) | JSON `{"address": [...]}` of the sender addresses that may post. Compared case-insensitively. Mail from any other sender is rejected. |
 | `GEOHASH_PRECISION` | `9` (about 5 m) | Geohash length, 1–12. |
 | `MAIDENHEAD_PRECISION` | `6` (5 × 2.5 arc minutes, about 7 × 5 km in Japan) | Maidenhead locator length: 2, 4, 6, 8 or 10. |
-| `INREACH_SUBJECT_TRIGGER` | `さんからのinReachメッセージ` | Text in the subject that marks an inReach notification. The sender's name is the part of the subject before it. The default matches Garmin's Japanese notification; set this to match the subject of yours if it differs. |
-| `X_API_KEY`, `X_API_SECRET`, `X_API_ACCESS_TOKEN`, `X_API_ACCESS_TOKEN_SECRET` | (required) | X API credentials. Store them with `wrangler secret put`. |
+| `INREACH_SUBJECT_TRIGGER` | `さんからのinReachメッセージ` | Text in the subject that marks an inReach notification. The sender's name is the part of the subject before it. The default matches Garmin's Japanese notification. If your notifications arrive in another language, set this to the matching part of their subject. |
 
 An invalid precision is logged and replaced by the default.
 
 > **Note:** The sender check uses the email's `From:` header, which a sender can forge. Keep the receiving address private.
 
-### Using the parser as a library
+### Adding a destination
 
-The parser in `src/` has no Cloudflare dependency. It works with any source of decoded email, such as postal-mime, the Gmail API or Google Apps Script.
-
-```ts
-import { parseInReachFields } from "inreach-mail-parser";
-
-const result = parseInReachFields(
-  { subject, text, from },
-  { geohashPrecision: 9, maidenheadPrecision: 6 },
-);
-// {
-//   sender: "HALKA", message: "…", latitude: 35.683851, longitude: 139.753973,
-//   geohash: "xn77h0j9r", maidenhead: "PM95vq",
-//   replyUrl: "https://inreachlink.com/…", subject: "…", from: "…"
-// }
-// It returns null when the subject is not an inReach notification.
-```
-
-The package also exports `parseInReachContent(subject, body)`, `parseInReachText(text)`, `isInReachSubject`, `extractMessageText`, `extractCoordinates`, `encodeGeohash`, `decodeGeohash` and `encodeMaidenhead`.
-
-### Development
-
-```sh
-npm run build   # compile src/ to dist/
-```
+Each destination is a file in `worker/destinations/` that says which settings it needs and how to post the text. Copy one, such as `mastodon.ts`, change it for your service, and add it to the list in `worker/destinations/index.ts`.
 
 ### License
 
@@ -129,121 +331,321 @@ npm run build   # compile src/ to dist/
 
 ## 日本語
 
-Garmin inReach（衛星通信機）から送ったメッセージを、送信した場所の情報と一緒に X（Twitter）へ投稿します。
-
-### 仕組み
+Garmin inReach（衛星通信機）から送ったメッセージを、送信した場所の情報と一緒に SNS などのサービスへ投稿します。
 
 ```
-inReach ──(衛星)──▶ Garmin ──(通知メール)──▶ Cloudflare Email Routing
-                                                  │
-                                                  ▼
-                                       Cloudflare Email Worker ──▶ X
+inReach ──(衛星)──▶ Garmin ──(メール)──▶ Cloudflare Email Routing ──▶ この Worker ──▶ X / Bluesky / Mastodon / Misskey / mixi2 / Nostr / APRS / Webhook
 ```
 
-1. inReach のメッセージ送信先に、Cloudflare Email Routing でこの Worker に届くメールアドレスを設定します。
-2. Worker が Garmin の通知メールを解析し、メッセージ本文と GPS の座標を取り出します。
-3. 投稿文を組み立てて X に投稿します。
+投稿先は自由に組み合わせられます。設定のある投稿先にだけ投稿し、設定のないものは飛ばします。すべての投稿先に同時に送り、どれかが失敗してもほかの投稿先には投稿されます。
 
-投稿の例：
+### クイックスタート
+
+必要なもの：Email Routing を有効にした独自ドメインのある Cloudflare アカウント、Node.js、[投稿先](#投稿先)のいずれか 1 つ以上のアカウント。
+
+**1. コードを取得してインストールする**
+
+```sh
+git clone https://github.com/halka/inReach2socialmedia.git
+cd inReach2socialmedia
+npm install
+npx wrangler login
+```
+
+**2. プロジェクトのフォルダーに `wrangler.toml` を作る**（このリポジトリには含まれていません）。次の内容をそのままコピーしてください。設定はすべて Cloudflare のダッシュボードで行い、このファイルには書きません。
+
+```toml
+name = "inreach2socialmedia"
+main = "worker/index.ts"
+compatibility_date = "2026-10-01"
+# 再デプロイしても、Cloudflare のダッシュボードで設定した変数を残す
+keep_vars = true
+```
+
+**3. デプロイする**
+
+```sh
+npx wrangler deploy
+```
+
+**4. Cloudflare のダッシュボードで設定を追加する。** **Workers & Pages → inreach2socialmedia → 設定（Settings）→ 変数とシークレット（Variables and Secrets）** を開き、設定ごとに **追加（Add）** します。通常の値は種類を **テキスト（Text）**、パスワード・トークン・鍵は **シークレット（Secret）** にします。最後に **デプロイ（Deploy）**（または **保存**）で反映します。
+
+- `allowed`（テキスト）は必須です。投稿を許可する送信元アドレスを JSON で書きます：`{"address": ["sender@example.com"]}`。inReach のメッセージの送信元アドレスを使ってください。送信元アドレスは、inReach から自分のメールアドレスにメッセージを 1 通送り、届いたメールの `From:` で確認できます。これ以外のアドレスからのメールは拒否します。
+- 続けて、使う投稿先の設定を追加します。[投稿先](#投稿先)を参照してください。
+
+**5. メールアドレスを Worker に振り分ける。** Cloudflare のダッシュボードでドメインを開き、**Email → Email Routing → Routing rules** でカスタムアドレス（例：`inreach-xxxx@example.com`）を作り、アクションを **Send to a Worker** → `inreach2socialmedia` にします。推測されにくいアドレスにしてください。
+
+**6. メッセージを送る。** inReach（または Garmin Explore アプリ）でそのアドレスを連絡先に追加し、メッセージを送ります。1 分ほどで投稿されます。
+
+投稿されない場合は、`npx wrangler tail` を実行してからもう一度メッセージを送り、Worker のログを確認してください。投稿先ごとの結果が表示されます。
+
+### 投稿先
+
+Worker の **設定 → 変数とシークレット** に、示した種類で追加します。「任意」の設定は省略できます。投稿先の名前をクリックすると手順が開きます。
+
+<details>
+<summary><strong>X（Twitter）</strong></summary>
+
+[X の開発者ポータル](https://developer.x.com/)で **Read and write** 権限のアプリを作り、アクセストークンとシークレットを発行します。
+
+| 変数 | 種類 | 値 |
+|---|---|---|
+| `X_API_KEY` | シークレット | API キー |
+| `X_API_SECRET` | シークレット | API キーシークレット |
+| `X_API_ACCESS_TOKEN` | シークレット | アクセストークン |
+| `X_API_ACCESS_TOKEN_SECRET` | シークレット | アクセストークンシークレット |
+
+</details>
+
+<details>
+<summary><strong>Bluesky</strong></summary>
+
+Bluesky の **設定 → プライバシーとセキュリティ → アプリパスワード** でアプリパスワードを作ります。普段のパスワードは使わないでください。
+
+| 変数 | 種類 | 値 |
+|---|---|---|
+| `BLUESKY_IDENTIFIER` | テキスト | ハンドル（例：`you.bsky.social`） |
+| `BLUESKY_APP_PASSWORD` | シークレット | アプリパスワード |
+| `BLUESKY_SERVICE` | テキスト | 任意。bsky.social 以外の PDS のアカウントの場合、その PDS（例：`https://your-pds.example`） |
+
+</details>
+
+<details>
+<summary><strong>Mastodon</strong></summary>
+
+自分のサーバーの **ユーザー設定 → 開発 → 新規アプリ** で `write:statuses` のスコープを付けてアプリを作り、**アクセストークン** をコピーします。
+
+| 変数 | 種類 | 値 |
+|---|---|---|
+| `MASTODON_URL` | テキスト | 自分のサーバー（例：`https://mstdn.jp`） |
+| `MASTODON_ACCESS_TOKEN` | シークレット | アクセストークン |
+
+</details>
+
+<details>
+<summary><strong>Misskey</strong></summary>
+
+自分のサーバーの **設定 → API → アクセストークンの発行** で **ノートを作成・削除する** を許可してトークンを発行します。
+
+| 変数 | 種類 | 値 |
+|---|---|---|
+| `MISSKEY_URL` | テキスト | 自分のサーバー（例：`https://misskey.io`） |
+| `MISSKEY_ACCESS_TOKEN` | シークレット | アクセストークン |
+
+</details>
+
+<details>
+<summary><strong>Nostr</strong></summary>
+
+秘密鍵を使います。普段使いの鍵ではなく、専用の鍵を作ることも検討してください。
+
+| 変数 | 種類 | 値 |
+|---|---|---|
+| `NOSTR_PRIVATE_KEY` | シークレット | `nsec1…` または 16 進数 64 文字 |
+| `NOSTR_RELAYS` | テキスト | 任意。カンマ区切りのリレー（例：`wss://yabu.me, wss://your.relay.example`）。初期値は `wss://relay.damus.io`、`wss://nos.lol`、`wss://yabu.me` |
+
+1 つ以上のリレーが受け付ければ投稿成功とみなします。
+
+</details>
+
+<details>
+<summary><strong>APRS</strong></summary>
+
+[aprs.fi](https://aprs.fi/) などの APRS の地図に、メッセージをコメントにして現在地を表示します。アマチュア無線のコールサインと、その APRS-IS パスコードが必要です。
+
+| 変数 | 種類 | 値 |
+|---|---|---|
+| `APRS_CALLSIGN` | テキスト | コールサイン。SSID を付けても構いません（例：`JA1ABC-7`） |
+| `APRS_PASSCODE` | シークレット | コールサインの APRS-IS パスコード |
+| `APRS_SERVER` | テキスト | 任意。下のサーバーのどれか。初期値は `rotate.aprs2.net:14580` |
+| `APRS_SYMBOL` | テキスト | 任意。下の地図のシンボルのどれか（例：`H[`）。初期値は `/[` |
+| `APRS_APP_NAME` | テキスト | 任意。APRS-IS にログインするときに送るアプリケーション名。サーバーの状態ページに表示されます。スペースは `-` に変わります。初期値は `inReach2socialmedia` |
+
+- 位置はレポート自体に含まれるので、コメントはメッセージだけです（geohash、グリッドロケーター、地図のリンクは送りません）。コメントは英数字などの ASCII 文字だけにします。全角の英数字は半角に変え、日本語などの ASCII 以外の文字は取り除きます。1 行にまとめ、43 字（APRS の上限）で切ります。日本語だけのメッセージは、コメントなしで位置だけを送ります。
+- GPS の位置が取れなかったメッセージは APRS に送りません。代わりの座標（皇居）を現在地として報告することはありません。
+
+**サーバー。** 位置情報はインターネット経由で APRS-IS に送ります。[APRS-IS の Tier 2](https://www.aprs2.net/) のサーバーは次のとおりです。
+
+| サーバー | 地域 |
+|---|---|
+| `rotate.aprs2.net:14580` | 世界中のサーバーのどれか（初期値） |
+| `asia.aprs2.net:14580` | アジア |
+| `noam.aprs2.net:14580` | 北米 |
+| `euro.aprs2.net:14580` | ヨーロッパ |
+| `aunz.aprs2.net:14580` | オーストラリア・ニュージーランド |
+| `soam.aprs2.net:14580` | 南米 |
+
+**地図のシンボル。** 2 文字をそのまま入力します。一覧は現行の APRS 1.2 のシンボル（[symbolsX.txt](https://www.aprs.org/symbols/symbolsX.txt) と、その拡張の [symbols-new.txt](https://www.aprs.org/symbols/symbols-new.txt)、2021 年 3 月 17 日改訂）に基づいています。
+
+| 分類 | シンボル | 絵文字 | 意味 |
+|---|---|---|---|
+| 人 | `/[` | 🧍 | 人（初期値） |
+|  | `H[` | 🥾 | ハイカー |
+|  | `R[` | 🏃 | ランナー |
+|  | `S[` | ⛷️ | スキーヤー |
+|  | `B[` | 👶 | ベビーカー |
+| 陸上 | `/b` | 🚲 | 自転車 |
+|  | `/<` | 🏍️ | オートバイ |
+|  | `/e` | 🐎 | 馬 |
+|  | `/>` | 🚗 | 車 |
+|  | `/j` | 🚙 | ジープ |
+|  | `\k` | 🚙 | SUV |
+|  | `4k` | 🛻 | 四輪駆動車 |
+|  | `Ak` | 🛞 | ATV（全地形対応車） |
+|  | `/R` | 🚐 | キャンピングカー |
+|  | `/k` | 🚚 | トラック |
+|  | `/U` | 🚌 | バス |
+|  | `/*` | 🛷 | スノーモービル |
+| 鉄道 | `/=` | 🚂 | 鉄道（一般） |
+|  | `B=` | 🚋 | 路面電車 |
+|  | `C=` | 🚆 | 通勤電車 |
+|  | `D=` | 🚆 | ディーゼル車 |
+|  | `E=` | 🚃 | 電車 |
+|  | `F=` | 🚃 | 貨物列車 |
+|  | `G=` | 🚡 | ゴンドラ・ロープウェイ |
+|  | `H=` | 🚄 | 高速鉄道（新幹線） |
+|  | `I=` | 🚞 | ケーブルカー |
+|  | `L=` | 🚈 | 高架鉄道 |
+|  | `M=` | 🚝 | モノレール |
+|  | `P=` | 🚆 | 旅客列車 |
+|  | `S=` | 🚂 | 蒸気機関車 |
+|  | `T=` | 🚉 | 駅 |
+|  | `U=` | 🚇 | 地下鉄 |
+|  | `X=` | 🚞 | 観光列車 |
+| 水上 | `/C` | 🛶 | カヌー |
+|  | `/Y` | ⛵ | ヨット |
+|  | `/s` | 🚤 | モーターボート |
+|  | `Bs` | 🛥️ | プレジャーボート |
+|  | `Js` | 🌊 | 水上オートバイ |
+|  | `Ds` | 🤿 | ダイビング |
+|  | `Fs` | 🎣 | 釣り |
+| 空 | `/'` | 🛩️ | 小型機 |
+|  | `/^` | ✈️ | 大型機 |
+|  | `/X` | 🚁 | ヘリコプター |
+|  | `/g` | 🛩️ | グライダー |
+|  | `/O` | 🎈 | 気球 |
+|  | `D^` | 🛸 | ドローン |
+| 場所 | `/;` | ⛺ | 移動運用（テント） |
+|  | `S;` | ⛰️ | SOTA（山岳移動） |
+|  | `I;` | 🏝️ | IOTA（離島移動） |
+|  | `\;` | 🏞️ | 公園・ピクニック |
+|  | `/-` | 🏠 | 自宅 |
+
+`H[` のように英数字で始まるシンボルは、APRS 1.2 で追加されたオーバーレイです。アプリによっては、元のシンボルに文字を重ねて表示します。絵文字は目安です。地図には APRS のアイコンが表示されます。
+
+</details>
+
+<details>
+<summary><strong>Webhook</strong></summary>
+
+| 変数 | 種類 | 値 |
+|---|---|---|
+| `WEBHOOK_URL` | シークレット | Webhook の URL。複数の場合はスペースまたはカンマで区切ります |
+
+メッセージごとに次の JSON を POST します。
+
+```json
+{
+  "text": "…", "content": "…",
+  "message": "…", "latitude": 35.683851, "longitude": 139.753973,
+  "geohash": "xn77h0j9r", "maidenhead": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
+  "isFallbackLocation": false
+}
+```
+
+`text` と `content` にはどちらも完成した投稿文が入ります。Slack の Incoming Webhook は `text`、Discord の Webhook は `content` を読むので、どちらの URL もそのまま使えます。そのほかの項目は投稿文の部品で、自分で投稿文を組み立てるサービス（n8n、Zapier、自分のサーバーなど）向けです。inReach の通知ではないメールでは `null` になります。`isFallbackLocation` は、GPS の位置が取れず皇居の座標を使った場合に `true` になります。`message` は短縮しません。
+
+</details>
+
+<details>
+<summary><strong>mixi2</strong></summary>
+
+mixi2 へは [mixi2-js](https://mixi2.js.org/) で投稿します。mixi2-js は Node.js が必要で、Worker の中では動きません。mixi2 の API は gRPC しか受け付けず Workers からは gRPC で通信できないうえ、内部の protobuf ライブラリが実行時にコードを生成し、Workers ではそれが禁止されているためです。そのため、Worker の隣の [Cloudflare Container](https://developers.cloudflare.com/containers/) で [`relay/mixi2/`](relay/mixi2/) を動かします。メッセージが届くと Worker が起動し、それ以外のときは停止しています。Worker からしか接続できません。mixi2 の投稿は 149 字までなので、中継サーバーは位置情報の行を残し、メッセージを短くして投稿文を組み立て直します。
+
+**Workers Paid** プラン（Containers は無料プランでは使えません）と、コンテナのイメージを作るために、デプロイするパソコンで [Docker](https://docs.docker.com/get-started/get-docker/) が動いている必要があります。
+
+1. [mixi2 Developer Platform](https://developer.mixi.social/) で利用を申請してアプリケーションを作り、**クライアント ID** と **クライアントシークレット** を控えます。
+2. `wrangler.toml` に次を追加し、`npx wrangler deploy` をもう一度実行します。
+
+   ```toml
+   # mixi2：relay/mixi2 を Cloudflare Container で動かす
+   [[containers]]
+   class_name = "Mixi2Relay"
+   scheduling_policy = "durable_object"
+   
+   [containers.images.base]
+   dockerfile = "./relay/mixi2/Dockerfile"
+   
+   [[durable_objects.bindings]]
+   name = "MIXI2_RELAY"
+   class_name = "Mixi2Relay"
+   
+   [exports.Mixi2Relay]
+   type = "durable-object"
+   storage = "sqlite"
+   ```
+
+3. Worker に設定を追加します。
+
+   | 変数 | 種類 | 値 |
+   |---|---|---|
+   | `MIXI2_CLIENT_ID` | テキスト | クライアント ID |
+   | `MIXI2_CLIENT_SECRET` | シークレット | クライアントシークレット |
+
+   変更した設定は、次にコンテナが起動したときに反映されます。コンテナは最後のメッセージから 2 分で停止します。
+
+**有料プランを使わない場合：** 手順 2・3 の代わりに、Node.js 20.19 以上または Docker イメージを動かせて HTTPS で公開できるほかの環境（Cloud Run、Fly.io、Render、自分のサーバーなど）で `relay/mixi2/` を動かし、Webhook としてつなぎます。
+
+1. 長いランダムなトークンを作ります（例：`node -e "console.log(crypto.randomUUID())"`）。
+2. 環境変数 `MIXI2_CLIENT_ID`、`MIXI2_CLIENT_SECRET`、`RELAY_TOKEN`（そのトークン）を設定して `relay/mixi2/` をデプロイします。Google Cloud Run の例：
+
+   ```sh
+   gcloud run deploy inreach-mixi2 --source relay/mixi2 --allow-unauthenticated \
+     --set-env-vars MIXI2_CLIENT_ID=…,MIXI2_CLIENT_SECRET=…,RELAY_TOKEN=…
+   ```
+
+   自分のサーバーでは、`relay/mixi2/` で `npm install` のあと `npm start` を実行します（`PORT` で待ち受けます。初期値は 8080）。
+3. Worker の `WEBHOOK_URL`（シークレット）に `https://<中継サーバー>/?token=<RELAY_TOKEN>` を追加します。ほかの Webhook もある場合は、`WEBHOOK_URL` にスペース区切りですべて入れます。
+
+</details>
+
+### 投稿の内容
 
 ```
 御所
 ｳﾞｫｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰｰﾝ
+Geohash: xn77h0j9r
+Grid: PM95vq
 https://maps.google.com/?q=35.683851,139.753973
-xn77h0j9r
-PM95vq
 ```
 
-各行の内容は次のとおりです。
-
 - inReach で入力したメッセージ
-- その場所の Google マップのリンク
 - その場所の [geohash](https://ja.wikipedia.org/wiki/ジオハッシュ)
 - その場所の [Maidenhead ロケーター](https://en.wikipedia.org/wiki/Maidenhead_Locator_System)（グリッドロケーター）
+- その場所の Google マップのリンク
 
-投稿文は X の 280 字制限に収まるように調整します。文字数は [twitter-text](https://github.com/twitter/twitter-text) を使って X と同じ方法で数えます（日本語と絵文字は 2、URL やドメイン名は長さに関係なく 23）。長すぎる場合はメッセージを短くして末尾を「…」にします。位置情報の行は残します。
+すべての投稿先に同じ文を送るため、最も厳しい制限に収まるように調整します。X の 280 字（[twitter-text](https://github.com/twitter/twitter-text) を使って X と同じ方法で数えます。日本語と絵文字は 2、URL やドメイン名は長さに関係なく 23）と、Bluesky の 300 字です。長すぎる場合はメッセージを短くして末尾を「…」にします。位置情報の行は残します。
 
 GPS の位置が取れなかったメッセージ（Garmin が `Lat 0 Lon 0` を送ってきた場合）は、皇居の座標を使います。inReach の通知ではないメールは、本文の最初の空でない行を投稿します。
 
-### セットアップ
+### そのほかの設定
 
-必要なもの：独自ドメインで Email Routing を有効にした Cloudflare アカウント、[Wrangler](https://developers.cloudflare.com/workers/wrangler/)、読み書き権限のある X の開発者アプリ。
-
-1. 依存パッケージをインストールします。
-
-   ```sh
-   npm install
-   ```
-
-2. `wrangler.toml` を作ります（このリポジトリには含まれていません）。例：
-
-   ```toml
-   name = "inreach2socialmedia"
-   main = "worker/index.ts"
-   compatibility_date = "2026-10-01"
-
-   [vars]
-   allowed = '{"address": ["no.reply.inreach@garmin.com"]}'
-   GEOHASH_PRECISION = "9"
-   MAIDENHEAD_PRECISION = "6"
-   # INREACH_SUBJECT_TRIGGER = "さんからのinReachメッセージ"
-   ```
-
-3. X API の認証情報をシークレットとして登録します。
-
-   ```sh
-   npx wrangler secret put X_API_KEY
-   npx wrangler secret put X_API_SECRET
-   npx wrangler secret put X_API_ACCESS_TOKEN
-   npx wrangler secret put X_API_ACCESS_TOKEN_SECRET
-   ```
-
-4. デプロイし、Email Routing で受信用アドレスをこの Worker に送るルールを追加します。
-
-   ```sh
-   npx wrangler deploy
-   ```
-
-### 設定
+Worker の **設定 → 変数とシークレット** に **テキスト** で追加します。
 
 | 変数 | 初期値 | 説明 |
 |---|---|---|
 | `allowed` | （必須） | 投稿を許可する送信元アドレスの JSON（`{"address": [...]}`）。大文字・小文字は区別しません。これ以外の送信元からのメールは拒否します。 |
 | `GEOHASH_PRECISION` | `9`（約 5 m） | geohash の桁数。1〜12。 |
 | `MAIDENHEAD_PRECISION` | `6`（経度 5 分 × 緯度 2.5 分、日本で約 7 × 5 km） | Maidenhead ロケーターの文字数。2・4・6・8・10 のいずれか。 |
-| `INREACH_SUBJECT_TRIGGER` | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。件名のこの文字列より前の部分を送信者名として使います。初期値は Garmin の日本語の通知メールに合わせてあります。件名が違う場合は、実際の件名に合わせて設定してください。 |
-| `X_API_KEY`、`X_API_SECRET`、`X_API_ACCESS_TOKEN`、`X_API_ACCESS_TOKEN_SECRET` | （必須） | X API の認証情報。`wrangler secret put` で登録してください。 |
+| `INREACH_SUBJECT_TRIGGER` | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。件名のこの文字列より前の部分を送信者名として使います。初期値は Garmin の日本語の通知メールに合わせてあります。別の言語で届く場合は、件名の該当部分に合わせて設定してください。 |
 
 桁数の設定が不正な場合は、ログに警告を出して初期値を使います。
 
 > **注意：** 送信元のチェックにはメールの `From:` ヘッダーを使っています。このヘッダーは送信者が偽装できるので、受信用アドレスは公開しないでください。
 
-### 解析部分をライブラリとして使う
+### 投稿先を追加する
 
-`src/` の解析処理は Cloudflare に依存していません。postal-mime、Gmail API、Google Apps Script など、デコード済みのメールを渡せる環境ならどこでも使えます。
-
-```ts
-import { parseInReachFields } from "inreach-mail-parser";
-
-const result = parseInReachFields(
-  { subject, text, from },
-  { geohashPrecision: 9, maidenheadPrecision: 6 },
-);
-// {
-//   sender: "HALKA", message: "…", latitude: 35.683851, longitude: 139.753973,
-//   geohash: "xn77h0j9r", maidenhead: "PM95vq",
-//   replyUrl: "https://inreachlink.com/…", subject: "…", from: "…"
-// }
-// 件名が inReach の通知でない場合は null を返します。
-```
-
-ほかに `parseInReachContent(subject, body)`、`parseInReachText(text)`、`isInReachSubject`、`extractMessageText`、`extractCoordinates`、`encodeGeohash`、`decodeGeohash`、`encodeMaidenhead` を公開しています。
-
-### 開発
-
-```sh
-npm run build   # src/ を dist/ にコンパイル
-```
+投稿先は `worker/destinations/` に 1 つずつファイルがあり、必要な設定と投稿の方法が書かれています。`mastodon.ts` などをコピーしてサービスに合わせて書き換え、`worker/destinations/index.ts` の一覧に追加してください。
 
 ### ライセンス
 

@@ -1,5 +1,7 @@
-import { encodeGeohash, encodeMaidenhead, parseInReachFields } from '../src/index.js';
-import type { InReachParseOptions } from '../src/index.js';
+import { parseInReachFields } from '../src/inreach.js';
+import { encodeGeohash } from '../src/geohash.js';
+import { encodeMaidenhead } from '../src/maidenhead.js';
+import type { InReachParseOptions } from '../src/inreach.js';
 import { TWEET_MAX_LENGTH, fitTweet } from './tweet.js';
 
 export interface Location {
@@ -11,15 +13,33 @@ export interface Location {
 export const IMPERIAL_PALACE: Location = { latitude: 35.683851, longitude: 139.753973 };
 
 /**
- * Build the post text from a decoded email:
- *   message            (shortened with "…" if the post would be too long)
- *   Google Maps link
- *   geohash
- *   Maidenhead locator
- * Without coordinates, `fallback` (the Imperial Palace by default) is used.
- * Fits X's 280 limit as X counts it (Japanese = 2, URL = 23).
+ * What is sent to the destinations: the finished `text`, plus its parts for
+ * destinations that build their own (the webhook passes them on). The parts
+ * are null when the email is not an inReach notification.
  */
-export function buildPostText(
+export interface Post {
+	text: string;
+	/** The whole message as typed, not shortened. */
+	message: string | null;
+	latitude: number | null;
+	longitude: number | null;
+	geohash: string | null;
+	maidenhead: string | null;
+	mapUrl: string | null;
+	/** True when the message had no GPS fix and the location is `fallback`, not where it was sent from. */
+	isFallbackLocation: boolean;
+}
+
+/**
+ * Build the post from a decoded email. Its text is:
+ *   message            (shortened with "…" if the post would be too long)
+ *   Geohash: geohash
+ *   Grid: Maidenhead locator
+ *   Google Maps link
+ * Without coordinates, `fallback` (the Imperial Palace by default) is used.
+ * Fits X's 280 limit as X counts it (Japanese = 2, URL = 23) and Bluesky's 300.
+ */
+export function buildPost(
 	subject: string,
 	body: string,
 	{
@@ -29,22 +49,31 @@ export function buildPostText(
 		maxPostLength = TWEET_MAX_LENGTH,
 		fallback = IMPERIAL_PALACE,
 	}: InReachParseOptions & { maxPostLength?: number; fallback?: Location } = {},
-): string {
+): Post {
 	const inReach = parseInReachFields({ subject, text: body }, { geohashPrecision, maidenheadPrecision, subjectTrigger });
 	if (!inReach) {
 		// Not an inReach message: first non-empty line, as before.
-		return fitTweet(body.split(/\r?\n/).find((line) => line.trim() !== '') ?? '', [], maxPostLength);
+		const text = fitTweet(body.split(/\r?\n/).find((line) => line.trim() !== '') ?? '', [], maxPostLength);
+		return {
+			text,
+			message: null,
+			latitude: null,
+			longitude: null,
+			geohash: null,
+			maidenhead: null,
+			mapUrl: null,
+			isFallbackLocation: false,
+		};
 	}
 
-	const { latitude, longitude } =
-		inReach.latitude !== null && inReach.longitude !== null
-			? { latitude: inReach.latitude, longitude: inReach.longitude }
-			: fallback;
+	const isFallbackLocation = inReach.latitude === null || inReach.longitude === null;
+	const { latitude, longitude } = isFallbackLocation
+		? fallback
+		: { latitude: inReach.latitude!, longitude: inReach.longitude! };
 	// The parser already encoded real coordinates; only the fallback needs encoding here.
-	const tail = [
-		`https://maps.google.com/?q=${latitude},${longitude}`,
-		inReach.geohash ?? encodeGeohash(latitude, longitude, geohashPrecision),
-		inReach.maidenhead ?? encodeMaidenhead(latitude, longitude, maidenheadPrecision),
-	];
-	return fitTweet(inReach.message, tail, maxPostLength);
+	const geohash = inReach.geohash ?? encodeGeohash(latitude, longitude, geohashPrecision);
+	const maidenhead = inReach.maidenhead ?? encodeMaidenhead(latitude, longitude, maidenheadPrecision);
+	const mapUrl = `https://maps.google.com/?q=${latitude},${longitude}`;
+	const text = fitTweet(inReach.message, [`Geohash: ${geohash}`, `Grid: ${maidenhead}`, mapUrl], maxPostLength);
+	return { text, message: inReach.message, latitude, longitude, geohash, maidenhead, mapUrl, isFallbackLocation };
 }
