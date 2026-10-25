@@ -5,3 +5,21 @@ compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 # Keep the variables set in the Cloudflare dashboard when deploying again.
 keep_vars = true
+[observability]
+enabled = true
+head_sampling_rate = 1
+redact_query_string = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
+
+[observability.issues]
+enabled = true
