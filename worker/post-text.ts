@@ -40,10 +40,11 @@ export function buildPostText(
 		inReach.latitude !== null && inReach.longitude !== null
 			? { latitude: inReach.latitude, longitude: inReach.longitude }
 			: fallback;
+	// The parser already encoded real coordinates; only the fallback needs encoding here.
 	const tail = [
 		`https://maps.google.com/?q=${latitude},${longitude}`,
-		encodeGeohash(latitude, longitude, geohashPrecision),
-		encodeMaidenhead(latitude, longitude, maidenheadPrecision),
+		inReach.geohash ?? encodeGeohash(latitude, longitude, geohashPrecision),
+		inReach.maidenhead ?? encodeMaidenhead(latitude, longitude, maidenheadPrecision),
 	];
 	return fitTweet(inReach.message, tail, maxPostLength);
 }

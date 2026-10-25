@@ -9,7 +9,8 @@
 
 export const TWEET_MAX_LENGTH = 280;
 const URL_LENGTH = 23;
-const URL_RE = /https?:\/\/[^\s]+/g;
+// twitter-text ends a URL at the first non-ASCII character (e.g. Japanese text written right after it).
+const URL_RE = /https?:\/\/[\x21-\x7e]+/g;
 
 /** Code point ranges that count as 1 (from twitter-text's default config). */
 const LIGHT_RANGES: Array<[number, number]> = [
@@ -47,7 +48,8 @@ export function fitTweet(head: string, tail: string[] = [], max = TWEET_MAX_LENG
   const full = join(head, tail);
   if (tweetLength(full) <= max) return full;
 
-  const chars = Array.from(head);
+  // Cut on grapheme boundaries so emoji sequences and combining marks are not split.
+  const chars = Array.from(new Intl.Segmenter().segment(head), (s) => s.segment);
   for (let n = chars.length - 1; n > 0; n--) {
     const candidate = join(chars.slice(0, n).join("").trimEnd() + ellipsis, tail);
     if (tweetLength(candidate) <= max) return candidate;

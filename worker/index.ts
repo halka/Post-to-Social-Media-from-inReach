@@ -21,8 +21,16 @@ export default {
 		const subject = email.subject ?? '';
 
 		// Check sender is allowed
-		const allowList = JSON.parse(env.allowed);
-		if (!allowList.address.includes(from)) {
+		// `allowed` is JSON like {"address": ["a@example.com"]}; addresses are compared case-insensitively.
+		let allowed: string[] = [];
+		try {
+			const address = JSON.parse(env.allowed ?? '{}')?.address;
+			if (Array.isArray(address)) allowed = address.map((a: unknown) => String(a).toLowerCase());
+			else console.error('Invalid allowed: "address" must be an array');
+		} catch (error) {
+			console.error('Invalid allowed JSON:', error);
+		}
+		if (from === '' || !allowed.includes(from.toLowerCase())) {
 			message.setReject(`Sender not allowed: ${from}`);
 			return;
 		}
