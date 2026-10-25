@@ -1,3 +1,4 @@
+import { baseUrl, postJson } from './http.js';
 import type { Destination } from './index.js';
 
 /** A URL, without trailing punctuation that is more likely to end the sentence. */
@@ -18,18 +19,12 @@ export function linkFacets(text: string): object[] {
 	});
 }
 
-async function xrpc(service: string, method: string, body: object, accessJwt?: string): Promise<any> {
-	const response = await fetch(`${service}/xrpc/${method}`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			...(accessJwt ? { Authorization: `Bearer ${accessJwt}` } : {}),
-		},
-		body: JSON.stringify(body),
+function xrpc(service: string, method: string, body: object, accessJwt?: string): Promise<any> {
+	return postJson(`${service}/xrpc/${method}`, body, {
+		token: accessJwt,
+		label: method,
+		detail: (data) => `${data.error ?? ''} ${data.message ?? ''}`.trim(),
 	});
-	const data: any = await response.json().catch(() => ({}));
-	if (!response.ok) throw new Error(`${method}: HTTP ${response.status} ${data.error ?? ''} ${data.message ?? ''}`.trim());
-	return data;
 }
 
 /** Bluesky (or another AT Protocol server), signed in with an app password. */
@@ -37,7 +32,7 @@ export const bluesky: Destination = {
 	name: 'Bluesky',
 	configured: (env) => Boolean(env.BLUESKY_IDENTIFIER && env.BLUESKY_APP_PASSWORD),
 	async post({ text }, env) {
-		const service = String(env.BLUESKY_SERVICE || 'https://bsky.social').replace(/\/+$/, '');
+		const service = baseUrl(env.BLUESKY_SERVICE || 'https://bsky.social');
 		const session = await xrpc(service, 'com.atproto.server.createSession', {
 			identifier: env.BLUESKY_IDENTIFIER,
 			password: env.BLUESKY_APP_PASSWORD,
