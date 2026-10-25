@@ -4,7 +4,7 @@
 >
 > Garmin inReach からメールで届いたメッセージを、ジオハッシュ・グリッドロケーター・地図リンク付きで X、Bluesky、Mastodon、Misskey、mixi2、Nostr、APRS-IS、Webhook へ同時投稿する Cloudflare Worker です。携帯電話の電波が届かない場所から投稿できます。
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/inReach2socialmedia)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/Post-to-Social-Media-from-inReach)
 
 [English](#english) | [日本語](#日本語)
 
@@ -53,7 +53,7 @@ You need a Cloudflare account with a domain that has Email Routing enabled, a Gi
 
 **1. Deploy.** Click this button:
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/inReach2socialmedia)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/Post-to-Social-Media-from-inReach)
 
 Cloudflare copies this repository to your GitHub account, then builds and deploys the Worker `inreach2socialmedia`. Each push to your copy deploys it again. All settings are made in the Cloudflare dashboard, so you do not need to edit any file.
 
@@ -75,8 +75,8 @@ If nothing is posted, open the Worker's **Logs** tab in the dashboard (**Workers
 With Node.js installed, you can deploy with Wrangler instead of the button:
 
 ```sh
-git clone https://github.com/halka/inReach2socialmedia.git
-cd inReach2socialmedia
+git clone https://github.com/halka/Post-to-Social-Media-from-inReach.git
+cd Post-to-Social-Media-from-inReach
 npm install
 npx wrangler login
 npx wrangler deploy
@@ -90,12 +90,12 @@ Then continue from step 2. `npx wrangler tail` shows the live log.
 
 Add these under **Settings → Variables and Secrets** of the Worker, like the destination settings.
 
-| Variable | Type | Default | Description |
-|---|---|---|---|
-| `permittedAddresses` | JSON | (required) | The sender addresses that may post, as a JSON array, e.g. `["sender@example.com"]`. Use the address your inReach messages come from: send one message from the inReach to your own email address and look at its `From:`. Compared case-insensitively. Mail from any other sender is rejected. |
-| `INREACH_SUBJECT_TRIGGER` | Text | `さんからのinReachメッセージ` | Text in the subject that marks an inReach notification. The sender's name is the part of the subject before it. The default matches Garmin's Japanese notification. **If your notifications arrive in another language, set this** to the matching part of their subject, or only the first line of each email is posted, without the location. |
-| `GEOHASH_PRECISION` | Text | `9` (about 5 m) | Geohash length, 1–12. |
-| `MAIDENHEAD_PRECISION` | Text | `6` (5 × 2.5 arc minutes, about 7 × 5 km in Japan) | Maidenhead locator length: 2, 4, 6, 8 or 10. |
+| Variable | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `permittedAddresses` | JSON | Required | — | The sender addresses that may post, as a JSON array, e.g. `["sender@example.com"]`. Use the address your inReach messages come from: send one message from the inReach to your own email address and look at its `From:`. Compared case-insensitively. Mail from any other sender is rejected. |
+| `INREACH_SUBJECT_TRIGGER` | Text | Optional | `さんからのinReachメッセージ` | Text in the subject that marks an inReach notification. The sender's name is the part of the subject before it. The default matches Garmin's Japanese notification. **If your notifications arrive in another language, set this** to the matching part of their subject, or only the first line of each email is posted, without the location. |
+| `GEOHASH_PRECISION` | Text | Optional | `9` (about 5 m) | Geohash length, 1–12. |
+| `MAIDENHEAD_PRECISION` | Text | Optional | `6` (5 × 2.5 arc minutes, about 7 × 5 km in Japan) | Maidenhead locator length: 2, 4, 6, 8 or 10. |
 
 > [!WARNING]
 > The sender check uses the email's `From:` header, which a sender can forge. Keep the receiving address private.
@@ -105,19 +105,19 @@ Add these under **Settings → Variables and Secrets** of the Worker, like the d
 
 ### Destinations
 
-Add each setting under **Settings → Variables and Secrets** of the Worker, with the type shown. Settings marked optional can be left out. Click a destination to open its steps.
+Add each setting under **Settings → Variables and Secrets** of the Worker, with the type shown. Settings marked **Optional** in the Required column can be left out. Click a destination to open its steps.
 
 <details>
 <summary><strong>X (Twitter)</strong></summary>
 
 Create an app in the [X developer portal](https://developer.x.com/) with **Read and write** permission, and generate its access token and secret.
 
-| Variable | Type | Value |
-|---|---|---|
-| `X_API_KEY` | Secret | API key |
-| `X_API_SECRET` | Secret | API key secret |
-| `X_API_ACCESS_TOKEN` | Secret | Access token |
-| `X_API_ACCESS_TOKEN_SECRET` | Secret | Access token secret |
+| Variable | Type | Required | Value |
+|---|---|---|---|
+| `X_API_KEY` | Secret | Required | API key |
+| `X_API_SECRET` | Secret | Required | API key secret |
+| `X_API_ACCESS_TOKEN` | Secret | Required | Access token |
+| `X_API_ACCESS_TOKEN_SECRET` | Secret | Required | Access token secret |
 
 </details>
 
@@ -126,11 +126,11 @@ Create an app in the [X developer portal](https://developer.x.com/) with **Read 
 
 Create an app password in Bluesky under **Settings → Privacy and security → App passwords**. Do not use your main password.
 
-| Variable | Type | Value |
-|---|---|---|
-| `BLUESKY_IDENTIFIER` | Text | Your handle, e.g. `you.bsky.social` |
-| `BLUESKY_APP_PASSWORD` | Secret | The app password |
-| `BLUESKY_SERVICE` | Text | Optional. Your PDS, e.g. `https://your-pds.example`, if your account is not on bsky.social |
+| Variable | Type | Required | Value |
+|---|---|---|---|
+| `BLUESKY_IDENTIFIER` | Text | Required | Your handle, e.g. `you.bsky.social` |
+| `BLUESKY_APP_PASSWORD` | Secret | Required | The app password |
+| `BLUESKY_SERVICE` | Text | Optional | Your PDS, e.g. `https://your-pds.example`, if your account is not on bsky.social |
 
 </details>
 
@@ -139,10 +139,10 @@ Create an app password in Bluesky under **Settings → Privacy and security → 
 
 On your server, go to **Preferences → Development → New application**, give it the `write:statuses` scope, and copy **Your access token**.
 
-| Variable | Type | Value |
-|---|---|---|
-| `MASTODON_URL` | Text | Your server, e.g. `https://mastodon.social` |
-| `MASTODON_ACCESS_TOKEN` | Secret | The access token |
+| Variable | Type | Required | Value |
+|---|---|---|---|
+| `MASTODON_URL` | Text | Required | Your server, e.g. `https://mastodon.social` |
+| `MASTODON_ACCESS_TOKEN` | Secret | Required | The access token |
 
 </details>
 
@@ -151,10 +151,10 @@ On your server, go to **Preferences → Development → New application**, give 
 
 On your server, go to **Settings → API → Generate access token** and allow **Compose or delete notes**.
 
-| Variable | Type | Value |
-|---|---|---|
-| `MISSKEY_URL` | Text | Your server, e.g. `https://misskey.io` |
-| `MISSKEY_ACCESS_TOKEN` | Secret | The access token |
+| Variable | Type | Required | Value |
+|---|---|---|---|
+| `MISSKEY_URL` | Text | Required | Your server, e.g. `https://misskey.io` |
+| `MISSKEY_ACCESS_TOKEN` | Secret | Required | The access token |
 
 </details>
 
@@ -163,10 +163,10 @@ On your server, go to **Settings → API → Generate access token** and allow *
 
 Use your private key. Consider a key just for this rather than your main one.
 
-| Variable | Type | Value |
-|---|---|---|
-| `NOSTR_PRIVATE_KEY` | Secret | `nsec1…` or 64 hex characters |
-| `NOSTR_RELAYS` | JSON | Optional. Relays as a JSON array, e.g. `["wss://relay.damus.io", "wss://your.relay.example"]`. Default: `wss://relay.damus.io`, `wss://nos.lol` and `wss://yabu.me` |
+| Variable | Type | Required | Value |
+|---|---|---|---|
+| `NOSTR_PRIVATE_KEY` | Secret | Required | `nsec1…` or 64 hex characters |
+| `NOSTR_RELAYS` | JSON | Optional | Relays as a JSON array, e.g. `["wss://relay.damus.io", "wss://your.relay.example"]`. Default: `wss://relay.damus.io`, `wss://nos.lol` and `wss://yabu.me` |
 
 It counts as posted when at least one relay accepts it.
 
@@ -180,13 +180,13 @@ It counts as posted when at least one relay accepts it.
 
 Your position appears on APRS maps such as [aprs.fi](https://aprs.fi/), with the message as the comment. This needs an amateur radio callsign and its APRS-IS passcode.
 
-| Variable | Type | Value |
-|---|---|---|
-| `APRS_CALLSIGN` | Text | Your callsign with an SSID if you like, e.g. `JA1ABC-7` |
-| `APRS_PASSCODE` | Secret | The APRS-IS passcode for the callsign |
-| `APRS_SERVER` | Text | Optional. One of the servers below. Default: `rotate.aprs2.net:14580` |
-| `APRS_SYMBOL` | Text | Optional. One of the map symbols below, e.g. `H[`. Default: `/[` |
-| `APRS_APP_NAME` | Text | Optional. The software name sent when logging in to APRS-IS, shown on the server's status page. Spaces become `-`. Default: `inReach2socialmedia` |
+| Variable | Type | Required | Value |
+|---|---|---|---|
+| `APRS_CALLSIGN` | Text | Required | Your callsign with an SSID if you like, e.g. `JA1ABC-7` |
+| `APRS_PASSCODE` | Secret | Required | The APRS-IS passcode for the callsign |
+| `APRS_SERVER` | Text | Optional | One of the servers below. Default: `rotate.aprs2.net:14580` |
+| `APRS_SYMBOL` | Text | Optional | One of the map symbols below, e.g. `H[`. Default: `/[` |
+| `APRS_APP_NAME` | Text | Optional | The software name sent when logging in to APRS-IS, shown on the server's status page. Spaces become `-`. Default: `inReach2socialmedia` |
 
 - The report carries the position, so the comment is only the message: no geohash, grid or map link. It is ASCII only: full-width letters and digits become half-width, and Japanese and other non-ASCII characters are removed. It is put on one line and cut to 43 characters (the APRS limit). A message written only in Japanese is sent as the position with no comment.
 - Messages without a GPS fix are not sent to APRS, so the fallback location is never reported as your position.
@@ -265,9 +265,9 @@ A symbol starting with a letter or digit, such as `H[`, is an overlay from the A
 <details>
 <summary><strong>Webhook</strong></summary>
 
-| Variable | Type | Value |
-|---|---|---|
-| `WEBHOOK_URL` | Secret | The webhook URL. For several, a JSON array such as `["https://…", "https://…"]`, or URLs separated by spaces or commas |
+| Variable | Type | Required | Value |
+|---|---|---|---|
+| `WEBHOOK_URL` | Secret | Required | The webhook URL. For several, a JSON array such as `["https://…", "https://…"]`, or URLs separated by spaces or commas |
 
 Each message is sent as a JSON POST:
 
@@ -314,10 +314,10 @@ This needs the **Workers Paid** plan (Containers are not on the free plan). Clou
 
 3. Add the settings to the Worker:
 
-   | Variable | Type | Value |
-   |---|---|---|
-   | `MIXI2_CLIENT_ID` | Text | Client ID |
-   | `MIXI2_CLIENT_SECRET` | Secret | Client secret |
+   | Variable | Type | Required | Value |
+   |---|---|---|---|
+   | `MIXI2_CLIENT_ID` | Text | Required | Client ID |
+   | `MIXI2_CLIENT_SECRET` | Secret | Required | Client secret |
 
    After changing them, the container picks them up the next time it starts. It stops 2 minutes after the last message.
 
@@ -388,7 +388,7 @@ GPS の位置が取れなかったメッセージ（Garmin が `Lat 0 Lon 0` を
 
 **1. デプロイする。** 次のボタンをクリックします。
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/inReach2socialmedia)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/Post-to-Social-Media-from-inReach)
 
 Cloudflare がこのリポジトリを自分の GitHub アカウントにコピーし、Worker `inreach2socialmedia` をビルドしてデプロイします。コピーしたリポジトリに push するたびに、もう一度デプロイされます。設定はすべて Cloudflare のダッシュボードで行うので、ファイルを編集する必要はありません。
 
@@ -410,8 +410,8 @@ Cloudflare がこのリポジトリを自分の GitHub アカウントにコピ�
 Node.js があれば、ボタンの代わりに Wrangler でデプロイできます。
 
 ```sh
-git clone https://github.com/halka/inReach2socialmedia.git
-cd inReach2socialmedia
+git clone https://github.com/halka/Post-to-Social-Media-from-inReach.git
+cd Post-to-Social-Media-from-inReach
 npm install
 npx wrangler login
 npx wrangler deploy
@@ -425,12 +425,12 @@ npx wrangler deploy
 
 投稿先の設定と同じく、Worker の **設定 → 変数とシークレット** に追加します。
 
-| 変数 | 種類 | 初期値 | 説明 |
-|---|---|---|---|
-| `permittedAddresses` | JSON | （必須） | 投稿を許可する送信元アドレスの JSON 配列（例：`["sender@example.com"]`）。inReach のメッセージの送信元アドレスを使います。送信元アドレスは、inReach から自分のメールアドレスにメッセージを 1 通送り、届いたメールの `From:` で確認できます。大文字・小文字は区別しません。これ以外の送信元からのメールは拒否します。 |
-| `INREACH_SUBJECT_TRIGGER` | テキスト | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。件名のこの文字列より前の部分を送信者名として使います。初期値は Garmin の日本語の通知メールに合わせてあります。**別の言語で届く場合は必ず設定してください。** 設定しないと、メールの最初の行だけが位置情報なしで投稿されます。 |
-| `GEOHASH_PRECISION` | テキスト | `9`（約 5 m） | geohash の桁数。1〜12。 |
-| `MAIDENHEAD_PRECISION` | テキスト | `6`（経度 5 分 × 緯度 2.5 分、日本で約 7 × 5 km） | Maidenhead ロケーターの文字数。2・4・6・8・10 のいずれか。 |
+| 変数 | 種類 | 必須 | 初期値 | 説明 |
+|---|---|---|---|---|
+| `permittedAddresses` | JSON | 必須 | — | 投稿を許可する送信元アドレスの JSON 配列（例：`["sender@example.com"]`）。inReach のメッセージの送信元アドレスを使います。送信元アドレスは、inReach から自分のメールアドレスにメッセージを 1 通送り、届いたメールの `From:` で確認できます。大文字・小文字は区別しません。これ以外の送信元からのメールは拒否します。 |
+| `INREACH_SUBJECT_TRIGGER` | テキスト | 任意 | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。件名のこの文字列より前の部分を送信者名として使います。初期値は Garmin の日本語の通知メールに合わせてあります。**別の言語で届く場合は必ず設定してください。** 設定しないと、メールの最初の行だけが位置情報なしで投稿されます。 |
+| `GEOHASH_PRECISION` | テキスト | 任意 | `9`（約 5 m） | geohash の桁数。1〜12。 |
+| `MAIDENHEAD_PRECISION` | テキスト | 任意 | `6`（経度 5 分 × 緯度 2.5 分、日本で約 7 × 5 km） | Maidenhead ロケーターの文字数。2・4・6・8・10 のいずれか。 |
 
 > [!WARNING]
 > 送信元のチェックにはメールの `From:` ヘッダーを使っています。このヘッダーは送信者が偽装できるので、受信用アドレスは公開しないでください。
@@ -440,19 +440,19 @@ npx wrangler deploy
 
 ### 投稿先
 
-Worker の **設定 → 変数とシークレット** に、示した種類で追加します。「任意」の設定は省略できます。投稿先の名前をクリックすると手順が開きます。
+Worker の **設定 → 変数とシークレット** に、示した種類で追加します。「必須」の欄が **任意** の設定は省略できます。投稿先の名前をクリックすると手順が開きます。
 
 <details>
 <summary><strong>X（Twitter）</strong></summary>
 
 [X の開発者ポータル](https://developer.x.com/)で **Read and write** 権限のアプリを作り、アクセストークンとシークレットを発行します。
 
-| 変数 | 種類 | 値 |
-|---|---|---|
-| `X_API_KEY` | シークレット | API キー |
-| `X_API_SECRET` | シークレット | API キーシークレット |
-| `X_API_ACCESS_TOKEN` | シークレット | アクセストークン |
-| `X_API_ACCESS_TOKEN_SECRET` | シークレット | アクセストークンシークレット |
+| 変数 | 種類 | 必須 | 値 |
+|---|---|---|---|
+| `X_API_KEY` | シークレット | 必須 | API キー |
+| `X_API_SECRET` | シークレット | 必須 | API キーシークレット |
+| `X_API_ACCESS_TOKEN` | シークレット | 必須 | アクセストークン |
+| `X_API_ACCESS_TOKEN_SECRET` | シークレット | 必須 | アクセストークンシークレット |
 
 </details>
 
@@ -461,11 +461,11 @@ Worker の **設定 → 変数とシークレット** に、示した種類で�
 
 Bluesky の **設定 → プライバシーとセキュリティ → アプリパスワード** でアプリパスワードを作ります。普段のパスワードは使わないでください。
 
-| 変数 | 種類 | 値 |
-|---|---|---|
-| `BLUESKY_IDENTIFIER` | テキスト | ハンドル（例：`you.bsky.social`） |
-| `BLUESKY_APP_PASSWORD` | シークレット | アプリパスワード |
-| `BLUESKY_SERVICE` | テキスト | 任意。bsky.social 以外の PDS のアカウントの場合、その PDS（例：`https://your-pds.example`） |
+| 変数 | 種類 | 必須 | 値 |
+|---|---|---|---|
+| `BLUESKY_IDENTIFIER` | テキスト | 必須 | ハンドル（例：`you.bsky.social`） |
+| `BLUESKY_APP_PASSWORD` | シークレット | 必須 | アプリパスワード |
+| `BLUESKY_SERVICE` | テキスト | 任意 | bsky.social 以外の PDS のアカウントの場合、その PDS（例：`https://your-pds.example`） |
 
 </details>
 
@@ -474,10 +474,10 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 
 自分のサーバーの **ユーザー設定 → 開発 → 新規アプリ** で `write:statuses` のスコープを付けてアプリを作り、**アクセストークン** をコピーします。
 
-| 変数 | 種類 | 値 |
-|---|---|---|
-| `MASTODON_URL` | テキスト | 自分のサーバー（例：`https://mstdn.jp`） |
-| `MASTODON_ACCESS_TOKEN` | シークレット | アクセストークン |
+| 変数 | 種類 | 必須 | 値 |
+|---|---|---|---|
+| `MASTODON_URL` | テキスト | 必須 | 自分のサーバー（例：`https://mstdn.jp`） |
+| `MASTODON_ACCESS_TOKEN` | シークレット | 必須 | アクセストークン |
 
 </details>
 
@@ -486,10 +486,10 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 
 自分のサーバーの **設定 → API → アクセストークンの発行** で **ノートを作成・削除する** を許可してトークンを発行します。
 
-| 変数 | 種類 | 値 |
-|---|---|---|
-| `MISSKEY_URL` | テキスト | 自分のサーバー（例：`https://misskey.io`） |
-| `MISSKEY_ACCESS_TOKEN` | シークレット | アクセストークン |
+| 変数 | 種類 | 必須 | 値 |
+|---|---|---|---|
+| `MISSKEY_URL` | テキスト | 必須 | 自分のサーバー（例：`https://misskey.io`） |
+| `MISSKEY_ACCESS_TOKEN` | シークレット | 必須 | アクセストークン |
 
 </details>
 
@@ -498,10 +498,10 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 
 秘密鍵を使います。普段使いの鍵ではなく、専用の鍵を作ることも検討してください。
 
-| 変数 | 種類 | 値 |
-|---|---|---|
-| `NOSTR_PRIVATE_KEY` | シークレット | `nsec1…` または 16 進数 64 文字 |
-| `NOSTR_RELAYS` | JSON | 任意。リレーの JSON 配列（例：`["wss://yabu.me", "wss://your.relay.example"]`）。初期値は `wss://relay.damus.io`、`wss://nos.lol`、`wss://yabu.me` |
+| 変数 | 種類 | 必須 | 値 |
+|---|---|---|---|
+| `NOSTR_PRIVATE_KEY` | シークレット | 必須 | `nsec1…` または 16 進数 64 文字 |
+| `NOSTR_RELAYS` | JSON | 任意 | リレーの JSON 配列（例：`["wss://yabu.me", "wss://your.relay.example"]`）。初期値は `wss://relay.damus.io`、`wss://nos.lol`、`wss://yabu.me` |
 
 1 つ以上のリレーが受け付ければ投稿成功とみなします。
 
@@ -512,30 +512,33 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 
 > [!CAUTION]
 > アマチュア無線技士の資格と有効なコールサインが必要です。
+>
 > 運用中は、無線従事者免許証を携帯してください。
 
 > [!IMPORTANT]
 > **電波法施行規則 第38条第11項**
+>
 > 無線従事者は、その業務に従事しているときは、無線従事者の免許証（法第39条又は法第50条の規定により船舶局無線従事者証明を要することとされた者については、無線従事者の免許証及び船舶局無線従事者証明書）を携帯していなければならない。
 >
 > **電波法 第4条**
+>
 > 無線局を開設しようとする者は、総務大臣の免許を受けなければならない。（ただし書略）
 >
 > **電波法 第79条**
+>
 > 総務大臣は、無線従事者が左の各号の一に該当するときは、その免許を取り消し、又は三箇月以内の期間を定めてその業務に従事することを停止することができる。（各号略）
 >
 > [電波法 | e-Gov 法令検索](https://laws.e-gov.go.jp/law/325AC0000000131)・[電波法施行規則 | e-Gov 法令検索](https://laws.e-gov.go.jp/law/325M50080000014)
 
-
 [aprs.fi](https://aprs.fi/) などの APRS の地図に、メッセージをコメントにして現在地を表示します。アマチュア無線のコールサインと、その APRS-IS パスコードが必要です。
 
-| 変数 | 種類 | 値 |
-|---|---|---|
-| `APRS_CALLSIGN` | テキスト | コールサイン。SSID を付けても構いません（例：`JA1ABC-7`） |
-| `APRS_PASSCODE` | シークレット | コールサインの APRS-IS パスコード |
-| `APRS_SERVER` | テキスト | 任意。下のサーバーのどれか。初期値は `rotate.aprs2.net:14580` |
-| `APRS_SYMBOL` | テキスト | 任意。下の地図のシンボルのどれか（例：`H[`）。初期値は `/[` |
-| `APRS_APP_NAME` | テキスト | 任意。APRS-IS にログインするときに送るアプリケーション名。サーバーの状態ページに表示されます。スペースは `-` に変わります。初期値は `inReach2socialmedia` |
+| 変数 | 種類 | 必須 | 値 |
+|---|---|---|---|
+| `APRS_CALLSIGN` | テキスト | 必須 | コールサイン。SSID を付けても構いません（例：`JA1ABC-7`） |
+| `APRS_PASSCODE` | シークレット | 必須 | コールサインの APRS-IS パスコード |
+| `APRS_SERVER` | テキスト | 任意 | 下のサーバーのどれか。初期値は `rotate.aprs2.net:14580` |
+| `APRS_SYMBOL` | テキスト | 任意 | 下の地図のシンボルのどれか（例：`H[`）。初期値は `/[` |
+| `APRS_APP_NAME` | テキスト | 任意 | APRS-IS にログインするときに送るアプリケーション名。サーバーの状態ページに表示されます。スペースは `-` に変わります。初期値は `inReach2socialmedia` |
 
 - 位置はレポート自体に含まれるので、コメントはメッセージだけです（geohash、グリッドロケーター、地図のリンクは送りません）。コメントは英数字などの ASCII 文字だけにします。全角の英数字は半角に変え、日本語などの ASCII 以外の文字は取り除きます。1 行にまとめ、43 字（APRS の上限）で切ります。日本語だけのメッセージは、コメントなしで位置だけを送ります。
 - GPS の位置が取れなかったメッセージは APRS に送りません。代わりの座標（皇居）を現在地として報告することはありません。
@@ -614,9 +617,9 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 <details>
 <summary><strong>Webhook</strong></summary>
 
-| 変数 | 種類 | 値 |
-|---|---|---|
-| `WEBHOOK_URL` | シークレット | Webhook の URL。複数の場合は `["https://…", "https://…"]` のような JSON 配列にするか、スペースまたはカンマで区切ります |
+| 変数 | 種類 | 必須 | 値 |
+|---|---|---|---|
+| `WEBHOOK_URL` | シークレット | 必須 | Webhook の URL。複数の場合は `["https://…", "https://…"]` のような JSON 配列にするか、スペースまたはカンマで区切ります |
 
 メッセージごとに次の JSON を POST します。
 
@@ -663,10 +666,10 @@ mixi2 へは [mixi2-js](https://mixi2.js.org/) で投稿します。mixi2-js は
 
 3. Worker に設定を追加します。
 
-   | 変数 | 種類 | 値 |
-   |---|---|---|
-   | `MIXI2_CLIENT_ID` | テキスト | クライアント ID |
-   | `MIXI2_CLIENT_SECRET` | シークレット | クライアントシークレット |
+   | 変数 | 種類 | 必須 | 値 |
+   |---|---|---|---|
+   | `MIXI2_CLIENT_ID` | テキスト | 必須 | クライアント ID |
+   | `MIXI2_CLIENT_SECRET` | シークレット | 必須 | クライアントシークレット |
 
    変更した設定は、次にコンテナが起動したときに反映されます。コンテナは最後のメッセージから 2 分で停止します。
 
@@ -703,7 +706,7 @@ Made by [halka](https://github.com/halka).
 
 ## Contributing
 
-Contribution, Issues and pull requests are welcome at [github.com/halka/inReach2socialmedia](https://github.com/halka/inReach2socialmedia).
+Contributions, issues and pull requests are welcome at [github.com/halka/Post-to-Social-Media-from-inReach](https://github.com/halka/Post-to-Social-Media-from-inReach).
 
 - For a bug, describe what you sent from the inReach, what was posted and what you expected. The Worker's log (the **Logs** tab in the dashboard) helps.
 - To add a destination, add a file in `worker/destinations/` (see [Adding a destination](#adding-a-destination)) and its setup steps to both the English and Japanese parts of this README.
