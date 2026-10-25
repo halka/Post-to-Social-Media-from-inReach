@@ -45,7 +45,7 @@ https://maps.google.com/?q=35.683851,139.753973
 
 The same text goes to every destination, so it is fitted to the strictest limits: X's 280, counted the way X counts it with [twitter-text](https://github.com/twitter/twitter-text) (Japanese and emoji count as 2, every URL or bare domain counts as 23), and Bluesky's 300 characters. If it is too long, the message is shortened and ends in "…". The location lines are kept.
 
-When a message has no GPS fix (Garmin sends `Lat 0 Lon 0`), the Imperial Palace in Tokyo is used as the location. Emails that are not inReach notifications are posted as their first non-empty line.
+When a message has no GPS fix (Garmin sends `Lat 0 Lon 0`), the Imperial Palace in Tokyo is used as the location. An email that is not an inReach notification has no location, so only its text is posted: the body without its signature (from a `-- ` line on), or the subject if the body is empty.
 
 ### Quick start
 
@@ -100,7 +100,7 @@ Add these under **Settings → Variables and Secrets** of the Worker, like the d
 | Variable | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `permittedAddresses` | JSON | Required | — | The sender addresses that may post, as a JSON array, e.g. `["sender@example.com"]`. Use the address your inReach messages come from: send one message from the inReach to your own email address and look at its `From:`. Compared case-insensitively. Mail from any other sender is rejected. |
-| `INREACH_SUBJECT_TRIGGER` | Text | Optional | `さんからのinReachメッセージ` | Text in the subject that marks an inReach notification. The sender's name is the part of the subject before it. The default matches Garmin's Japanese notification. **If your notifications arrive in another language, set this** to the matching part of their subject, or only the first line of each email is posted, without the location. |
+| `INREACH_SUBJECT_TRIGGER` | Text | Optional | `さんからのinReachメッセージ` | Text in the subject that marks an inReach notification. The sender's name is the part of the subject before it. The default matches Garmin's Japanese notification. **If your notifications arrive in another language, set this** to the matching part of their subject, or each email is posted as plain text, without the location. |
 | `GEOHASH_PRECISION` | Text | Optional | `9` (about 5 m) | Geohash length, `1–12`. |
 | `MAIDENHEAD_PRECISION` | Text | Optional | `6` (5 × 2.5 arc minutes, about 7 × 5 km in Japan) | Maidenhead locator length: `2`, `4`, `6`, `8` or `10`. |
 
@@ -205,7 +205,7 @@ Each message is sent as a JSON POST:
 {
   "text": "…", "content": "…",
   "message": "…", "latitude": 35.683851, "longitude": 139.753973,
-  "geohash": "xn77h0j9r", "maidenhead": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
+  "geohash": "xn77h0j9r", "grid": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
   "isFallbackLocation": false
 }
 ```
@@ -365,7 +365,7 @@ Each destination is a file in `worker/destinations/` that exports a `Destination
 
 - `name`: the name shown in the log.
 - `configured(env)`: returns `true` when the settings it needs are present in `env`. The destination is used only then.
-- `post(post, env)`: posts `post.text` and resolves with an id or URL for the log, or throws if posting failed. Besides `text`, `post` has the parts it was built from (`message`, `latitude`, `longitude`, `geohash`, `maidenhead`, `mapUrl` and `isFallbackLocation`) for a service that builds its own text. When the email was not an inReach message, the parts are `null` and `isFallbackLocation` is `false`.
+- `post(post, env)`: posts `post.text` and resolves with an id or URL for the log, or throws if posting failed. Besides `text`, `post` has the parts it was built from (`message`, `latitude`, `longitude`, `geohash`, `grid`, `mapUrl` and `isFallbackLocation`) for a service that builds its own text. When the email was not an inReach message, the parts are `null` and `isFallbackLocation` is `false`.
 
 `post.text` is already fitted to X's and Bluesky's limits, so a service with a lower limit has to shorten it itself. Copy a short destination such as `mastodon.ts` and change it for your service. Then import it in `worker/destinations/index.ts` and add it to `DESTINATIONS`.
 
@@ -414,7 +414,7 @@ X の 280 字（[twitter-text](https://github.com/twitter/twitter-text) を使�
 長すぎる場合はメッセージを短くして末尾を「…」にします。位置情報の行は残します。
 
 GPS の位置が取れなかったメッセージ（Garmin が `Lat 0 Lon 0` を送ってきた場合）は、皇居の座標を使います。<br>
-inReach の通知ではないメールは、本文の最初の空でない行を投稿します。
+inReach の通知ではないメールには位置情報がないので、本文だけを投稿します。署名（`-- ` の行から下）は除き、本文が空のときは件名を投稿します。
 
 ### クイックスタート
 
@@ -474,7 +474,7 @@ npx wrangler deploy
 | 変数 | 種類 | 必須 | 初期値 | 説明 |
 |---|---|---|---|---|
 | `permittedAddresses` | JSON | 必須 | — | 投稿を許可する送信元アドレスの JSON 配列（例：`["sender@example.com"]`）。<br>inReach のメッセージの送信元アドレスを使います。<br>送信元アドレスは、inReach から自分のメールアドレスにメッセージを 1 通送り、届いたメールの `From:` で確認できます。<br>大文字・小文字は区別しません。これ以外の送信元からのメールは拒否します。 |
-| `INREACH_SUBJECT_TRIGGER` | テキスト | 任意 | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。<br>件名のこの文字列より前の部分を送信者名として使います。<br>初期値は Garmin の日本語の通知メールに合わせてあります。<br>**別の言語で届く場合は必ず設定してください。**<br>**設定しないと、メールの最初の行だけが位置情報なしで投稿されます。** |
+| `INREACH_SUBJECT_TRIGGER` | テキスト | 任意 | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。<br>件名のこの文字列より前の部分を送信者名として使います。<br>初期値は Garmin の日本語の通知メールに合わせてあります。<br>**別の言語で届く場合は必ず設定してください。**<br>**設定しないと、メールの本文だけが位置情報なしで投稿されます。** |
 | `GEOHASH_PRECISION` | テキスト | 任意 | `9`（約 5 m） | geohash の桁数。1〜12。 |
 | `MAIDENHEAD_PRECISION` | テキスト | 任意 | `6`（経度 5 分 × 緯度 2.5 分、日本で約 7 × 5 km） | Maidenhead ロケーターの文字数。2・4・6・8・10 のいずれか。 |
 
@@ -585,7 +585,7 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 {
   "text": "…", "content": "…",
   "message": "…", "latitude": 35.683851, "longitude": 139.753973,
-  "geohash": "xn77h0j9r", "maidenhead": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
+  "geohash": "xn77h0j9r", "grid": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
   "isFallbackLocation": false
 }
 ```
@@ -766,7 +766,7 @@ mixi2-js は Node.js が必要で、Worker の中では動きません。mixi2 �
 
 - `name`：ログに表示する名前。
 - `configured(env)`：必要な設定が `env` にそろっているときに `true` を返します。`true` のときだけその投稿先が使われます。
-- `post(post, env)`：`post.text` を投稿し、ログ用の ID か URL を返し、失敗したときは例外を投げます。<br>`post` には `text` のほか、組み立てる元になった `message`・`latitude`・`longitude`・`geohash`・`maidenhead`・`mapUrl`・`isFallbackLocation` もあり、独自の本文を作るサービスで使えます。<br>inReach のメッセージでないメールのときは、これらは `null`（`isFallbackLocation` は `false`）です。
+- `post(post, env)`：`post.text` を投稿し、ログ用の ID か URL を返し、失敗したときは例外を投げます。<br>`post` には `text` のほか、組み立てる元になった `message`・`latitude`・`longitude`・`geohash`・`grid`・`mapUrl`・`isFallbackLocation` もあり、独自の本文を作るサービスで使えます。<br>inReach のメッセージでないメールのときは、これらは `null`（`isFallbackLocation` は `false`）です。
 
 `post.text` は X と Bluesky の文字数制限に合わせて短くしてあります。<br>
 制限がもっと短いサービスでは、投稿先の中でさらに短くしてください。<br>

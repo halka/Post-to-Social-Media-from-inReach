@@ -20,7 +20,7 @@ export default {
 		const parser = new PostalMime.default();
 		const rawEmail = new Response(message.raw);
 		const email = await parser.parse(await rawEmail.arrayBuffer());
-		const from = email.from.address ?? '';
+		const from = email.from?.address ?? '';
 		const body = email.text ?? '';
 		const subject = email.subject ?? '';
 

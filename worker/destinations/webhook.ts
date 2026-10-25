@@ -4,7 +4,7 @@ import type { Destination } from './index.js';
 /**
  * POST the post as JSON to each URL in WEBHOOK_URL (a JSON array, or URLs
  * separated by spaces, commas or newlines):
- *   { text, content, message, latitude, longitude, geohash, maidenhead, mapUrl }
+ *   { text, content, message, latitude, longitude, geohash, grid, mapUrl, isFallbackLocation }
  * `text` and `content` are both the finished post text: `text` is what Slack
  * incoming webhooks read and `content` is what Discord's read. The rest are its
  * parts, null when the email was not an inReach notification.

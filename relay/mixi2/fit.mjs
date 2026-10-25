@@ -9,8 +9,8 @@ const graphemes = (text) => Array.from(new Intl.Segmenter().segment(text), (s) =
  * rebuilt from its parts: the message, shortened with "…", and the location
  * lines kept. Without the parts (not an inReach message), `text` is shortened.
  */
-export function fitPost({ text, message, geohash, maidenhead, mapUrl }, max = MIXI2_MAX_LENGTH) {
-  const tail = message == null ? [] : [`Geohash: ${geohash}`, `Grid: ${maidenhead}`, mapUrl];
+export function fitPost({ text, message, geohash, grid, mapUrl }, max = MIXI2_MAX_LENGTH) {
+  const tail = message == null ? [] : [`Geohash: ${geohash}`, `Grid: ${grid}`, mapUrl];
   const tailLength = tail.length === 0 ? 0 : graphemes(tail.join("\n")).length + 1; // + the newline before it
   const head = graphemes(String(message ?? text ?? "").trim());
   const room = max - tailLength;

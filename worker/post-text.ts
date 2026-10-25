@@ -13,6 +13,21 @@ export interface Location {
 export const IMPERIAL_PALACE: Location = { latitude: 35.683851, longitude: 139.753973 };
 
 /**
+ * The text of an email that is not an inReach notification: the body without
+ * its signature (from a "-- " line on), or the subject when that is empty.
+ */
+export function plainMessage(subject: string, body: string): string {
+	const lines = body.replace(/\r\n?/g, '\n').split('\n');
+	const signature = lines.findIndex((line) => /^-- ?$/.test(line));
+	const text = (signature === -1 ? lines : lines.slice(0, signature))
+		.map((line) => line.trimEnd())
+		.join('\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+	return text || subject.trim();
+}
+
+/**
  * What is sent to the destinations: the finished `text`, plus its parts for
  * destinations that build their own (the webhook passes them on). The parts
  * are null when the email is not an inReach notification.
@@ -37,6 +52,8 @@ export interface Post {
  *   Grid: Maidenhead locator
  *   Google Maps link
  * Without coordinates, `fallback` (the Imperial Palace by default) is used.
+ * An email that is not an inReach notification has no location, so its post is
+ * only its text (see plainMessage).
  * Fits X's 280 limit as X counts it (Japanese = 2, URL = 23) and Bluesky's 300.
  */
 export function buildPost(
@@ -52,8 +69,8 @@ export function buildPost(
 ): Post {
 	const inReach = parseInReachFields({ subject, text: body }, { geohashPrecision, gridPrecision: gridPrecision, subjectTrigger });
 	if (!inReach) {
-		// Not an inReach message: first non-empty line, as before.
-		const text = fitTweet(body.split(/\r?\n/).find((line) => line.trim() !== '') ?? '', [], maxPostLength);
+		// Not an inReach message: no location, only the text.
+		const text = fitTweet(plainMessage(subject, body), [], maxPostLength);
 		return {
 			text,
 			message: null,
