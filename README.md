@@ -1,10 +1,10 @@
 # Post to Social Media from inReach
-
+![Post to Social from inReach(R)](./assets/social-preview.jpg)
 > This is a Cloudflare Worker that receives Garmin inReach messages by email and cross-posts them, with geohash, grid locator and a map link, to X, Bluesky, Mastodon, Misskey, mixi2, Nostr, APRS-IS and webhooks — no cellphone signal required.
->
+
+
 > Garmin inReach からメールで届いたメッセージを、ジオハッシュ・グリッドロケーター・地図リンク付きで X、Bluesky、Mastodon、Misskey、mixi2、Nostr、APRS-IS、Webhook へ同時投稿する Cloudflare Worker です。携帯電話の電波が届かない場所から投稿できます。
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/Post-to-Social-Media-from-inReach)
 
 [English](#english) | [日本語](#日本語)
 
@@ -51,21 +51,28 @@ When a message has no GPS fix (Garmin sends `Lat 0 Lon 0`), the Imperial Palace 
 
 You need a Cloudflare account with a domain that has Email Routing enabled, a GitHub account, and an account on at least one [destination](#destinations). The Worker runs on Cloudflare Workers, so nothing needs to be installed on your computer.
 
-**1. Deploy.** Click this button:
+#### 1. Deploy
+
+Click this button:
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/Post-to-Social-Media-from-inReach)
 
 Cloudflare copies this repository to your GitHub account, then builds and deploys the Worker `post-to-social-media-from-inreach`. Each push to your copy deploys it again. All settings are made in the Cloudflare dashboard, so you do not need to edit any file.
 
-**2. Add the settings in the Cloudflare dashboard.** Go to **Workers & Pages → post-to-social-media-from-inreach → Settings → Variables and Secrets**, and click **Add** for each setting. Choose the type **Text** for ordinary values, **JSON** for lists, and **Secret** for passwords, tokens and keys. Click **Deploy** (or **Save**) to apply them.
+#### 2. Add the settings in the Cloudflare dashboard
+Go to **Workers & Pages → post-to-social-media-from-inreach → Settings → Variables and Secrets**, and click **Add** for each setting. Choose the type **Text** for ordinary values, **JSON** for lists, and **Secret** for passwords, tokens and keys. Click **Deploy** (or **Save**) to apply them.
 
 - `permittedAddresses` (JSON) is required: the sender addresses that may post, such as `["sender@example.com"]`.
 - If Garmin's notification emails do not arrive in Japanese, also set `INREACH_SUBJECT_TRIGGER`. See [Settings](#settings).
 - Then add the settings of each destination you want. See [Destinations](#destinations).
 
-**3. Route an email address to the Worker.** In the Cloudflare dashboard, open your domain, go to **Email → Email Routing → Routing rules**, and create a custom address (for example `inreach-xxxx@example.com`) with the action **Send to a Worker** → `post-to-social-media-from-inreach`. Choose an address that is hard to guess.
+#### 3. Route an email address to the Worker
 
-**4. Send a message.** On the inReach (or in the Garmin Explore app), add that address as a contact and send it a message. It is posted within a minute or so.
+In the Cloudflare dashboard, open your domain, go to **Email → Email Routing → Routing rules**, and create a custom address (for example `inreach-xxxx@example.com`) with the action **Send to a Worker** → `post-to-social-media-from-inreach`. Choose an address that is hard to guess.
+
+#### 4. Send a message
+
+On the inReach (or in the Garmin Explore app), add that address as a contact and send it a message. It is posted within a minute or so.
 
 If nothing is posted, open the Worker's **Logs** tab in the dashboard (**Workers & Pages → post-to-social-media-from-inreach → Logs**), start the live log, and send another message. It shows each destination's result.
 
@@ -94,8 +101,8 @@ Add these under **Settings → Variables and Secrets** of the Worker, like the d
 |---|---|---|---|---|
 | `permittedAddresses` | JSON | Required | — | The sender addresses that may post, as a JSON array, e.g. `["sender@example.com"]`. Use the address your inReach messages come from: send one message from the inReach to your own email address and look at its `From:`. Compared case-insensitively. Mail from any other sender is rejected. |
 | `INREACH_SUBJECT_TRIGGER` | Text | Optional | `さんからのinReachメッセージ` | Text in the subject that marks an inReach notification. The sender's name is the part of the subject before it. The default matches Garmin's Japanese notification. **If your notifications arrive in another language, set this** to the matching part of their subject, or only the first line of each email is posted, without the location. |
-| `GEOHASH_PRECISION` | Text | Optional | `9` (about 5 m) | Geohash length, 1–12. |
-| `MAIDENHEAD_PRECISION` | Text | Optional | `6` (5 × 2.5 arc minutes, about 7 × 5 km in Japan) | Maidenhead locator length: 2, 4, 6, 8 or 10. |
+| `GEOHASH_PRECISION` | Text | Optional | `9` (about 5 m) | Geohash length, `1–12`. |
+| `MAIDENHEAD_PRECISION` | Text | Optional | `6` (5 × 2.5 arc minutes, about 7 × 5 km in Japan) | Maidenhead locator length: `2`, `4`, `6`, `8` or `10`. |
 
 > [!WARNING]
 > The sender check uses the email's `From:` header, which a sender can forge. Keep the receiving address private.
@@ -173,13 +180,87 @@ It counts as posted when at least one relay accepts it.
 </details>
 
 <details>
+<summary><strong>Webhook</strong></summary>
+
+| Variable | Type | Required | Value |
+|---|---|---|---|
+| `WEBHOOK_URL` | Secret | Required | The webhook URL. For several, a JSON array such as `["https://…", "https://…"]`, or URLs separated by spaces or commas |
+
+Each message is sent as a JSON POST:
+
+```json
+{
+  "text": "…", "content": "…",
+  "message": "…", "latitude": 35.683851, "longitude": 139.753973,
+  "geohash": "xn77h0j9r", "maidenhead": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
+  "isFallbackLocation": false
+}
+```
+
+`text` and `content` are both the finished post text. Slack incoming webhooks read `text` and Discord webhooks read `content`, so their URLs work as they are. The other fields are its parts, for services that build their own post (n8n, Zapier, your own server). They are `null` when the email was not an inReach notification. `isFallbackLocation` is `true` when the message had no GPS fix and the location is the Imperial Palace. `message` is never shortened.
+
+</details>
+
+<details>
+<summary><strong>mixi2</strong></summary>
+
+Posts go to mixi2 with [mixi2-js](https://mixi2.js.org/). mixi2-js needs Node.js and cannot run in the Worker itself: the mixi2 API accepts only gRPC, which Workers cannot send, and its protobuf library generates code at runtime, which Workers forbid. So it runs in a [Cloudflare Container](https://developers.cloudflare.com/containers/) next to the Worker: [`relay/mixi2/`](relay/mixi2/), started by the Worker when a message arrives and asleep otherwise. Only the Worker can reach it. mixi2 posts are limited to 149 characters, so the relay rebuilds the post: it keeps the location lines and shortens the message.
+
+This needs the **Workers Paid** plan (Containers are not on the free plan). Cloudflare builds the container image when it deploys. (If you deploy from your computer instead, [Docker](https://docs.docker.com/get-started/get-docker/) must be running there.)
+
+1. On the [mixi2 Developer Platform](https://developer.mixi.social/), apply for access, create an application and note its **client ID** and **client secret**.
+2. In your copy of the repository on GitHub, add this to the end of `wrangler.toml` and commit. Cloudflare deploys it with the container:
+
+   ```toml
+   # mixi2: runs relay/mixi2 in a Cloudflare Container
+   [[containers]]
+   class_name = "Mixi2Relay"
+   scheduling_policy = "durable_object"
+   
+   [containers.images.base]
+   dockerfile = "./relay/mixi2/Dockerfile"
+   
+   [[durable_objects.bindings]]
+   name = "MIXI2_RELAY"
+   class_name = "Mixi2Relay"
+   
+   [exports.Mixi2Relay]
+   type = "durable-object"
+   storage = "sqlite"
+   ```
+
+3. Add the settings to the Worker:
+
+   | Variable | Type | Required | Value |
+   |---|---|---|---|
+   | `MIXI2_CLIENT_ID` | Text | Required | Client ID |
+   | `MIXI2_CLIENT_SECRET` | Secret | Required | Client secret |
+
+   After changing them, the container picks them up the next time it starts. It stops 2 minutes after the last message.
+
+**Without the paid plan:** run `relay/mixi2/` on any other host that runs Node.js 20.19 or later or a Docker image (Cloud Run, Fly.io, Render, your own server) over HTTPS, and connect it as a webhook instead of steps 2 and 3:
+
+1. Make a long random token, for example with `node -e "console.log(crypto.randomUUID())"`.
+2. Deploy `relay/mixi2/` with the environment variables `MIXI2_CLIENT_ID`, `MIXI2_CLIENT_SECRET` and `RELAY_TOKEN` (the token). On Google Cloud Run, for example:
+
+   ```sh
+   gcloud run deploy inreach-mixi2 --source relay/mixi2 --allow-unauthenticated \
+     --set-env-vars MIXI2_CLIENT_ID=…,MIXI2_CLIENT_SECRET=…,RELAY_TOKEN=…
+   ```
+
+   On your own server, run `npm install` and then `npm start` in `relay/mixi2/` (it listens on `PORT`, 8080 by default).
+3. Add `https://<your relay>/?token=<RELAY_TOKEN>` to the Worker's `WEBHOOK_URL` (Secret). If you already have other webhooks, put them all in `WEBHOOK_URL`, separated by spaces.
+
+</details>
+
+> [!CAUTION]
+> **APRS needs a valid amateur radio license.**
+> Follow the radio regulations of your country. In Japan, for example, an operator must carry their radio operator license while operating (Radio Act Enforcement Regulations, Article 38, Paragraph 11).
+
+<details>
 <summary><strong>APRS</strong></summary>
 
 Your position appears on APRS maps such as [aprs.fi](https://aprs.fi/), with the message as the comment. This needs an amateur radio callsign and its APRS-IS passcode.
-
-> [!CAUTION]
-> **You need a valid amateur radio license.**
-> Follow the radio regulations of your country. In Japan, for example, an operator must carry their radio operator license while operating (Radio Act Enforcement Regulations, Article 38, Paragraph 11).
 
 | Variable | Type | Required | Value |
 |---|---|---|---|
@@ -258,88 +339,22 @@ Your position appears on APRS maps such as [aprs.fi](https://aprs.fi/), with the
 |  | `I;` | 🏝️ | Islands on the Air (IOTA) |
 |  | `\;` | 🏞️ | Park, picnic |
 |  | `/-` | 🏠 | House |
+|  | `/H` | 🛌 | Hotel (Blue Bed) |
+
 
 A symbol starting with a letter or digit, such as `H[`, is an overlay from the APRS 1.2 extension. Some apps draw it as the base symbol with the letter on top. The emoji are only a guide: maps show the APRS icon.
 
 </details>
 
-<details>
-<summary><strong>Webhook</strong></summary>
-
-| Variable | Type | Required | Value |
-|---|---|---|---|
-| `WEBHOOK_URL` | Secret | Required | The webhook URL. For several, a JSON array such as `["https://…", "https://…"]`, or URLs separated by spaces or commas |
-
-Each message is sent as a JSON POST:
-
-```json
-{
-  "text": "…", "content": "…",
-  "message": "…", "latitude": 35.683851, "longitude": 139.753973,
-  "geohash": "xn77h0j9r", "maidenhead": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
-  "isFallbackLocation": false
-}
-```
-
-`text` and `content` are both the finished post text. Slack incoming webhooks read `text` and Discord webhooks read `content`, so their URLs work as they are. The other fields are its parts, for services that build their own post (n8n, Zapier, your own server). They are `null` when the email was not an inReach notification. `isFallbackLocation` is `true` when the message had no GPS fix and the location is the Imperial Palace. `message` is never shortened.
-
-</details>
-
-<details>
-<summary><strong>mixi2</strong></summary>
-
-Posts go to mixi2 with [mixi2-js](https://mixi2.js.org/). mixi2-js needs Node.js and cannot run in the Worker itself: the mixi2 API accepts only gRPC, which Workers cannot send, and its protobuf library generates code at runtime, which Workers forbid. So it runs in a [Cloudflare Container](https://developers.cloudflare.com/containers/) next to the Worker: [`relay/mixi2/`](relay/mixi2/), started by the Worker when a message arrives and asleep otherwise. Only the Worker can reach it. mixi2 posts are limited to 149 characters, so the relay rebuilds the post: it keeps the location lines and shortens the message.
-
-This needs the **Workers Paid** plan (Containers are not on the free plan). Cloudflare builds the container image when it deploys. (If you deploy from your computer instead, [Docker](https://docs.docker.com/get-started/get-docker/) must be running there.)
-
-1. On the [mixi2 Developer Platform](https://developer.mixi.social/), apply for access, create an application and note its **client ID** and **client secret**.
-2. In your copy of the repository on GitHub, add this to the end of `wrangler.toml` and commit. Cloudflare deploys it with the container:
-
-   ```toml
-   # mixi2: runs relay/mixi2 in a Cloudflare Container
-   [[containers]]
-   class_name = "Mixi2Relay"
-   scheduling_policy = "durable_object"
-   
-   [containers.images.base]
-   dockerfile = "./relay/mixi2/Dockerfile"
-   
-   [[durable_objects.bindings]]
-   name = "MIXI2_RELAY"
-   class_name = "Mixi2Relay"
-   
-   [exports.Mixi2Relay]
-   type = "durable-object"
-   storage = "sqlite"
-   ```
-
-3. Add the settings to the Worker:
-
-   | Variable | Type | Required | Value |
-   |---|---|---|---|
-   | `MIXI2_CLIENT_ID` | Text | Required | Client ID |
-   | `MIXI2_CLIENT_SECRET` | Secret | Required | Client secret |
-
-   After changing them, the container picks them up the next time it starts. It stops 2 minutes after the last message.
-
-**Without the paid plan:** run `relay/mixi2/` on any other host that runs Node.js 20.19 or later or a Docker image (Cloud Run, Fly.io, Render, your own server) over HTTPS, and connect it as a webhook instead of steps 2 and 3:
-
-1. Make a long random token, for example with `node -e "console.log(crypto.randomUUID())"`.
-2. Deploy `relay/mixi2/` with the environment variables `MIXI2_CLIENT_ID`, `MIXI2_CLIENT_SECRET` and `RELAY_TOKEN` (the token). On Google Cloud Run, for example:
-
-   ```sh
-   gcloud run deploy inreach-mixi2 --source relay/mixi2 --allow-unauthenticated \
-     --set-env-vars MIXI2_CLIENT_ID=…,MIXI2_CLIENT_SECRET=…,RELAY_TOKEN=…
-   ```
-
-   On your own server, run `npm install` and then `npm start` in `relay/mixi2/` (it listens on `PORT`, 8080 by default).
-3. Add `https://<your relay>/?token=<RELAY_TOKEN>` to the Worker's `WEBHOOK_URL` (Secret). If you already have other webhooks, put them all in `WEBHOOK_URL`, separated by spaces.
-
-</details>
-
 ### Adding a destination
 
-Each destination is a file in `worker/destinations/` that says which settings it needs and how to post the text. Copy one, such as `mastodon.ts`, change it for your service, and add it to the list in `worker/destinations/index.ts`.
+Each destination is a file in `worker/destinations/` that exports a `Destination` object (the folder also has `http.ts`, shared helpers for posting JSON, and `index.ts`, the list of destinations). The object has three parts:
+
+- `name`: the name shown in the log.
+- `configured(env)`: returns `true` when the settings it needs are present in `env`. The destination is used only then.
+- `post(post, env)`: posts `post.text` and resolves with an id or URL for the log, or throws if posting failed. Besides `text`, `post` has the parts it was built from (`message`, `latitude`, `longitude`, `geohash`, `maidenhead`, `mapUrl` and `isFallbackLocation`) for a service that builds its own text. When the email was not an inReach message, the parts are `null` and `isFallbackLocation` is `false`.
+
+`post.text` is already fitted to X's and Bluesky's limits, so a service with a lower limit has to shorten it itself. Copy a short destination such as `mastodon.ts` and change it for your service. Then import it in `worker/destinations/index.ts` and add it to `DESTINATIONS`.
 
 ---
 
@@ -362,7 +377,8 @@ flowchart LR
     worker --> webhook["Webhook<br>（Slack、Discord など）"]
 ```
 
-投稿先は自由に組み合わせられます。設定のある投稿先にだけ投稿し、設定のないものは飛ばします。すべての投稿先に同時に送り、どれかが失敗してもほかの投稿先には投稿されます。
+投稿先は自由に組み合わせられます。<br>
+設定のある投稿先にだけ投稿し、設定のないものは飛ばします。<br>すべての投稿先に同時に送り、どれかが失敗してもほかの投稿先には投稿されます。
 
 ### 投稿の内容
 
@@ -379,31 +395,47 @@ https://maps.google.com/?q=35.683851,139.753973
 - その場所の [グリッドロケーター](https://en.wikipedia.org/wiki/Maidenhead_Locator_System)（グリッドロケーター）
 - その場所の Google マップのリンク
 
-すべての投稿先に同じ文を送るため、最も厳しい制限に収まるように調整します。X の 280 字（[twitter-text](https://github.com/twitter/twitter-text) を使って X と同じ方法で数えます。日本語と絵文字は 2、URL やドメイン名は長さに関係なく 23）と、Bluesky の 300 字です。長すぎる場合はメッセージを短くして末尾を「…」にします。位置情報の行は残します。
+すべての投稿先に同じ文を送るため、最も厳しい制限に収まるように調整します。<br>
+X の 280 字（[twitter-text](https://github.com/twitter/twitter-text) を使って X と同じ方法で数えます。<br>
+日本語と絵文字は 2、URL やドメイン名は長さに関係なく 23）と、Bluesky の 300 字です。<br>
+長すぎる場合はメッセージを短くして末尾を「…」にします。位置情報の行は残します。
 
-GPS の位置が取れなかったメッセージ（Garmin が `Lat 0 Lon 0` を送ってきた場合）は、皇居の座標を使います。inReach の通知ではないメールは、本文の最初の空でない行を投稿します。
+GPS の位置が取れなかったメッセージ（Garmin が `Lat 0 Lon 0` を送ってきた場合）は、皇居の座標を使います。<br>
+inReach の通知ではないメールは、本文の最初の空でない行を投稿します。
 
 ### クイックスタート
 
-必要なもの：Email Routing を有効にした独自ドメインのある Cloudflare アカウント、GitHub アカウント、[投稿先](#投稿先)のいずれか 1 つ以上のアカウント。Cloudflare Workers で動くので、パソコンに何かをインストールする必要はありません。
+必要なもの：Email Routing を有効にした独自ドメインのある Cloudflare アカウント、GitHub アカウント、[投稿先](#投稿先)のいずれか 1 つ以上のアカウント。<br>
+Cloudflare Workers で動くので、パソコンに何かをインストールする必要はありません。
 
-**1. デプロイする。** 次のボタンをクリックします。
+#### 1. デプロイする
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/Post-to-Social-Media-from-inReach)
 
-Cloudflare がこのリポジトリを自分の GitHub アカウントにコピーし、Worker `post-to-social-media-from-inreach` をビルドしてデプロイします。コピーしたリポジトリに push するたびに、もう一度デプロイされます。設定はすべて Cloudflare のダッシュボードで行うので、ファイルを編集する必要はありません。
+Cloudflare がこのリポジトリを自分の GitHub アカウントにコピーし、Worker `post-to-social-media-from-inreach` をビルドしてデプロイします。<br>
+コピーしたリポジトリに push するたびに、もう一度デプロイされます。<br>
+設定はすべて Cloudflare のダッシュボードで行うので、ファイルを編集する必要はありません。
 
-**2. Cloudflare のダッシュボードで設定を追加する。** **Workers & Pages → post-to-social-media-from-inreach → 設定（Settings）→ 変数とシークレット（Variables and Secrets）** を開き、設定ごとに **追加（Add）** します。通常の値は種類を **テキスト（Text）**、一覧は **JSON**、パスワード・トークン・鍵は **シークレット（Secret）** にします。最後に **デプロイ（Deploy）**（または **保存**）で反映します。
+#### 2. Cloudflare のダッシュボードで設定を追加する
 
-- `permittedAddresses`（JSON）は必須です。投稿を許可する送信元アドレスを `["sender@example.com"]` のように書きます。
-- Garmin の通知メールが日本語以外で届く場合は、`INREACH_SUBJECT_TRIGGER` も設定します。[基本設定](#基本設定)を参照してください。
+**Workers & Pages → post-to-social-media-from-inreach → 設定（Settings）→ 変数とシークレット（Variables and Secrets）** を開き、設定ごとに **追加（Add）** します。<br>
+通常の値は種類を **テキスト（Text）**、一覧は **JSON**、パスワード・トークン・鍵は **シークレット（Secret）** にします。
+<br>最後に **デプロイ（Deploy）**（または **保存**）で反映します。
+
+- `permittedAddresses`（JSON）は必須です。
+- 投稿を許可する送信元アドレスを `["sender@example.com"]` のように書きます。
+- Garmin の通知メールが日本語以外で届く場合は、`INREACH_SUBJECT_TRIGGER` も設定します。<br>[基本設定](#基本設定)を参照してください。
 - 続けて、使う投稿先の設定を追加します。[投稿先](#投稿先)を参照してください。
 
-**3. メールアドレスを Worker に振り分ける。** Cloudflare のダッシュボードでドメインを開き、**Email → Email Routing → Routing rules** でカスタムアドレス（例：`inreach-xxxx@example.com`）を作り、アクションを **Send to a Worker** → `post-to-social-media-from-inreach` にします。推測されにくいアドレスにしてください。
+#### 3. メールアドレスを Worker に振り分ける
+ Cloudflare のダッシュボードでドメインを開き、**Email → Email Routing → Routing rules** でカスタムアドレス（例：`inreach-xxxx@example.com`）を作り、アクションを **Send to a Worker** → `post-to-social-media-from-inreach` にします。推測されにくいアドレスにしてください。
 
-**4. メッセージを送る。** inReach（または Garmin Explore アプリ）でそのアドレスを連絡先に追加し、メッセージを送ります。1 分ほどで投稿されます。
+#### 4. メッセージを送る
+inReach（または Garmin Explore アプリ）でそのアドレスを連絡先に追加し、メッセージを送ります。<br>
+1 分ほどで投稿されます。
 
-投稿されない場合は、ダッシュボードで Worker の **ログ（Logs）** タブ（**Workers & Pages → post-to-social-media-from-inreach → Logs**）を開いてライブログを開始し、もう一度メッセージを送ってください。投稿先ごとの結果が表示されます。
+投稿されない場合は、ダッシュボードで Worker の **ログ（Logs）** タブ（**Workers & Pages → post-to-social-media-from-inreach → Logs**）を開いてライブログを開始し、もう一度メッセージを送ってください。<br>
+投稿先ごとの結果が表示されます。
 
 <details>
 <summary>パソコンからデプロイする場合</summary>
@@ -428,20 +460,22 @@ npx wrangler deploy
 
 | 変数 | 種類 | 必須 | 初期値 | 説明 |
 |---|---|---|---|---|
-| `permittedAddresses` | JSON | 必須 | — | 投稿を許可する送信元アドレスの JSON 配列（例：`["sender@example.com"]`）。inReach のメッセージの送信元アドレスを使います。送信元アドレスは、inReach から自分のメールアドレスにメッセージを 1 通送り、届いたメールの `From:` で確認できます。大文字・小文字は区別しません。これ以外の送信元からのメールは拒否します。 |
-| `INREACH_SUBJECT_TRIGGER` | テキスト | 任意 | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。件名のこの文字列より前の部分を送信者名として使います。初期値は Garmin の日本語の通知メールに合わせてあります。**別の言語で届く場合は必ず設定してください。** 設定しないと、メールの最初の行だけが位置情報なしで投稿されます。 |
+| `permittedAddresses` | JSON | 必須 | — | 投稿を許可する送信元アドレスの JSON 配列（例：`["sender@example.com"]`）。<br>inReach のメッセージの送信元アドレスを使います。<br>送信元アドレスは、inReach から自分のメールアドレスにメッセージを 1 通送り、届いたメールの `From:` で確認できます。<br>大文字・小文字は区別しません。これ以外の送信元からのメールは拒否します。 |
+| `INREACH_SUBJECT_TRIGGER` | テキスト | 任意 | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。<br>件名のこの文字列より前の部分を送信者名として使います。<br>初期値は Garmin の日本語の通知メールに合わせてあります。<br>**別の言語で届く場合は必ず設定してください。**<br>**設定しないと、メールの最初の行だけが位置情報なしで投稿されます。** |
 | `GEOHASH_PRECISION` | テキスト | 任意 | `9`（約 5 m） | geohash の桁数。1〜12。 |
 | `MAIDENHEAD_PRECISION` | テキスト | 任意 | `6`（経度 5 分 × 緯度 2.5 分、日本で約 7 × 5 km） | Maidenhead ロケーターの文字数。2・4・6・8・10 のいずれか。 |
 
 > [!WARNING]
-> 送信元のチェックにはメールの `From:` ヘッダーを使っています。このヘッダーは送信者が偽装できるので、受信用アドレスは公開しないでください。
+> 送信元のチェックにはメールの `From:` ヘッダーを使っています。<br>このヘッダーは送信者が偽装できるので、受信用アドレスは公開しないでください。
 
 - 桁数の設定が不正な場合は、ログに警告を出して初期値を使います。
-- 一覧の設定（`permittedAddresses`、`NOSTR_RELAYS`、`WEBHOOK_URL`）は、種類 **JSON** で JSON 配列を設定します。同じ配列をテキストで設定したり、カンマやスペースで区切って書いたりすることもできます。`permittedAddresses` は `{"address": [...]}` の形式も使えます。
+- 一覧の設定（`permittedAddresses`、`NOSTR_RELAYS`、`WEBHOOK_URL`）は、種類 **JSON** で JSON 配列を設定します。同じ配列をテキストで設定したり、カンマやスペースで区切って書いたりすることもできます。<br>`permittedAddresses` は `{"address": [...]}` の形式も使えます。
 
 ### 投稿先
 
-Worker の **設定 → 変数とシークレット** に、示した種類で追加します。「必須」の欄が **任意** の設定は省略できます。投稿先の名前をクリックすると手順が開きます。
+Worker の **設定 → 変数とシークレット** に、示した種類で追加します。<br>
+「必須」の欄が **任意** の設定は省略できます。<br>
+投稿先の名前をクリックすると手順が開きます。
 
 <details>
 <summary><strong>X（Twitter）</strong></summary>
@@ -460,7 +494,8 @@ Worker の **設定 → 変数とシークレット** に、示した種類で�
 <details>
 <summary><strong>Bluesky</strong></summary>
 
-Bluesky の **設定 → プライバシーとセキュリティ → アプリパスワード** でアプリパスワードを作ります。普段のパスワードは使わないでください。
+Bluesky の **設定 → プライバシーとセキュリティ → アプリパスワード** でアプリパスワードを作ります。<br>
+普段のパスワードは使わないでください。
 
 | 変数 | 種類 | 必須 | 値 |
 |---|---|---|---|
@@ -497,7 +532,8 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 <details>
 <summary><strong>Nostr</strong></summary>
 
-秘密鍵を使います。普段使いの鍵ではなく、専用の鍵を作ることも検討してください。
+> [!CAUTION]
+> 秘密鍵を使います。
 
 | 変数 | 種類 | 必須 | 値 |
 |---|---|---|---|
@@ -509,14 +545,91 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 </details>
 
 <details>
-<summary><strong>APRS</strong></summary>
+<summary><strong>Webhook</strong></summary>
+
+| 変数 | 種類 | 必須 | 値 |
+|---|---|---|---|
+| `WEBHOOK_URL` | シークレット | 必須 | Webhook の URL。複数の場合は `["https://…", "https://…"]` のような JSON 配列にするか、スペースまたはカンマで区切ります |
+
+メッセージごとに次の JSON を POST します。
+
+```json
+{
+  "text": "…", "content": "…",
+  "message": "…", "latitude": 35.683851, "longitude": 139.753973,
+  "geohash": "xn77h0j9r", "maidenhead": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
+  "isFallbackLocation": false
+}
+```
+
+`text` と `content` にはどちらも完成した投稿文が入ります。Slack の Incoming Webhook は `text`、Discord の Webhook は `content` を読むので、どちらの URL もそのまま使えます。そのほかの項目は投稿文の部品で、自分で投稿文を組み立てるサービス（n8n、Zapier、自分のサーバーなど）向けです。inReach の通知ではないメールでは `null` になります。`isFallbackLocation` は、GPS の位置が取れず皇居の座標を使った場合に `true` になります。`message` は短縮しません。
+
+</details>
+
+<details>
+<summary><strong>mixi2</strong></summary>
+
+mixi2 へは [mixi2-js](https://mixi2.js.org/) で投稿します。<br>
+mixi2-js は Node.js が必要で、Worker の中では動きません。mixi2 の API は gRPC しか受け付けず Workers からは gRPC で通信できないうえ、内部の protobuf ライブラリが実行時にコードを生成し、Workers ではそれが禁止されているためです。<br>
+そのため、Worker の隣の [Cloudflare Container](https://developers.cloudflare.com/containers/) で [`relay/mixi2/`](relay/mixi2/) を動かします。<br>
+メッセージが届くと Worker が起動し、それ以外のときは停止しています。Worker からしか接続できません。mixi2 の投稿は 149 字までなので、中継サーバーは位置情報の行を残し、メッセージを短くして投稿文を組み立て直します。
+
+**Workers Paid** プランが必要です（Containers は無料プランでは使えません）。コンテナのイメージは、デプロイのときに Cloudflare が作ります（パソコンからデプロイする場合は、そのパソコンで [Docker](https://docs.docker.com/get-started/get-docker/) が動いている必要があります）。
+
+1. [mixi2 Developer Platform](https://developer.mixi.social/) で利用を申請してアプリケーションを作り、**クライアント ID** と **クライアントシークレット** を控えます。<br>
+2. GitHub の自分のリポジトリで、`wrangler.toml` の末尾に次を追加してコミットします。Cloudflare がコンテナと一緒にデプロイします。
+
+   ```toml
+   # mixi2：relay/mixi2 を Cloudflare Container で動かす
+   [[containers]]
+   class_name = "Mixi2Relay"
+   scheduling_policy = "durable_object"
+   
+   [containers.images.base]
+   dockerfile = "./relay/mixi2/Dockerfile"
+   
+   [[durable_objects.bindings]]
+   name = "MIXI2_RELAY"
+   class_name = "Mixi2Relay"
+   
+   [exports.Mixi2Relay]
+   type = "durable-object"
+   storage = "sqlite"
+   ```
+
+3. Worker に設定を追加します。
+
+   | 変数 | 種類 | 必須 | 値 |
+   |---|---|---|---|
+   | `MIXI2_CLIENT_ID` | テキスト | 必須 | クライアント ID |
+   | `MIXI2_CLIENT_SECRET` | シークレット | 必須 | クライアントシークレット |
+
+   変更した設定は、次にコンテナが起動したときに反映されます。コンテナは最後のメッセージから 2 分で停止します。
+
+**有料プランを使わない場合：** 手順 2・3 の代わりに、Node.js 20.19 以上または Docker イメージを動かせて HTTPS で公開できるほかの環境（Cloud Run、Fly.io、Render、自分のサーバーなど）で `relay/mixi2/` を動かし、Webhook としてつなぎます。
+
+1. 長いランダムなトークンを作ります（例：`node -e "console.log(crypto.randomUUID())"`）。
+2. 環境変数 `MIXI2_CLIENT_ID`、`MIXI2_CLIENT_SECRET`、`RELAY_TOKEN`（そのトークン）を設定して `relay/mixi2/` をデプロイします。Google Cloud Run の例：
+
+   ```sh
+   gcloud run deploy inreach-mixi2 --source relay/mixi2 --allow-unauthenticated \
+     --set-env-vars MIXI2_CLIENT_ID=…,MIXI2_CLIENT_SECRET=…,RELAY_TOKEN=…
+   ```
+
+   自分のサーバーでは、`relay/mixi2/` で `npm install` のあと `npm start` を実行します（`PORT` で待ち受けます。初期値は 8080）。
+3. Worker の `WEBHOOK_URL`（シークレット）に `https://<中継サーバー>/?token=<RELAY_TOKEN>` を追加します。ほかの Webhook もある場合は、`WEBHOOK_URL` にスペース区切りですべて入れます。
+
+</details>
+
 
 > [!CAUTION]
-> アマチュア無線技士の資格と有効なコールサインが必要です。
+> APRS を使うには、アマチュア無線技士の資格と有効なコールサインが必要です。
 >
 > 運用中は、無線従事者免許証を携帯してください。
 
-> [!IMPORTANT]
+<details>
+<summary><strong>APRS</strong></summary>
+
 > **電波法施行規則 第38条第11項**
 >
 > 無線従事者は、その業務に従事しているときは、無線従事者の免許証（法第39条又は法第50条の規定により船舶局無線従事者証明を要することとされた者については、無線従事者の免許証及び船舶局無線従事者証明書）を携帯していなければならない。
@@ -544,7 +657,9 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 - 位置はレポート自体に含まれるので、コメントはメッセージだけです（geohash、グリッドロケーター、地図のリンクは送りません）。コメントは英数字などの ASCII 文字だけにします。全角の英数字は半角に変え、日本語などの ASCII 以外の文字は取り除きます。1 行にまとめ、43 字（APRS の上限）で切ります。日本語だけのメッセージは、コメントなしで位置だけを送ります。
 - GPS の位置が取れなかったメッセージは APRS に送りません。代わりの座標（皇居）を現在地として報告することはありません。
 
-**サーバー。** 位置情報はインターネット経由で APRS-IS に送ります。[APRS-IS の Tier 2](https://www.aprs2.net/) のサーバーは次のとおりです。
+**サーバー**
+
+位置情報はインターネット経由で APRS-IS に送ります。[APRS-IS の Tier 2](https://www.aprs2.net/) のサーバーは次のとおりです。
 
 | サーバー | 地域 |
 |---|---|
@@ -555,7 +670,8 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 | `aunz.aprs2.net:14580` | オーストラリア・ニュージーランド |
 | `soam.aprs2.net:14580` | 南米 |
 
-**地図のシンボル。** 2 文字をそのまま入力します。一覧は現行の APRS 1.2 のシンボル（[symbolsX.txt](https://www.aprs.org/symbols/symbolsX.txt) と、その拡張の [symbols-new.txt](https://www.aprs.org/symbols/symbols-new.txt)、2021 年 3 月 17 日改訂）に基づいています。
+**地図のシンボル。** 2 文字をそのまま入力します。<br>
+一覧は現行の APRS 1.2 のシンボル（[symbolsX.txt](https://www.aprs.org/symbols/symbolsX.txt) と、その拡張の [symbols-new.txt](https://www.aprs.org/symbols/symbols-new.txt)、2021 年 3 月 17 日改訂）に基づいています。
 
 | 分類 | シンボル | 絵文字 | 意味 |
 |---|---|---|---|
@@ -610,88 +726,23 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 |  | `I;` | 🏝️ | IOTA（離島移動） |
 |  | `\;` | 🏞️ | 公園・ピクニック |
 |  | `/-` | 🏠 | 自宅 |
+|  | `/H` | 🛌 | ホテル |
 
 `H[` のように英数字で始まるシンボルは、APRS 1.2 で追加されたオーバーレイです。アプリによっては、元のシンボルに文字を重ねて表示します。絵文字は目安です。地図には APRS のアイコンが表示されます。
 
 </details>
 
-<details>
-<summary><strong>Webhook</strong></summary>
-
-| 変数 | 種類 | 必須 | 値 |
-|---|---|---|---|
-| `WEBHOOK_URL` | シークレット | 必須 | Webhook の URL。複数の場合は `["https://…", "https://…"]` のような JSON 配列にするか、スペースまたはカンマで区切ります |
-
-メッセージごとに次の JSON を POST します。
-
-```json
-{
-  "text": "…", "content": "…",
-  "message": "…", "latitude": 35.683851, "longitude": 139.753973,
-  "geohash": "xn77h0j9r", "maidenhead": "PM95vq", "mapUrl": "https://maps.google.com/?q=35.683851,139.753973",
-  "isFallbackLocation": false
-}
-```
-
-`text` と `content` にはどちらも完成した投稿文が入ります。Slack の Incoming Webhook は `text`、Discord の Webhook は `content` を読むので、どちらの URL もそのまま使えます。そのほかの項目は投稿文の部品で、自分で投稿文を組み立てるサービス（n8n、Zapier、自分のサーバーなど）向けです。inReach の通知ではないメールでは `null` になります。`isFallbackLocation` は、GPS の位置が取れず皇居の座標を使った場合に `true` になります。`message` は短縮しません。
-
-</details>
-
-<details>
-<summary><strong>mixi2</strong></summary>
-
-mixi2 へは [mixi2-js](https://mixi2.js.org/) で投稿します。mixi2-js は Node.js が必要で、Worker の中では動きません。mixi2 の API は gRPC しか受け付けず Workers からは gRPC で通信できないうえ、内部の protobuf ライブラリが実行時にコードを生成し、Workers ではそれが禁止されているためです。そのため、Worker の隣の [Cloudflare Container](https://developers.cloudflare.com/containers/) で [`relay/mixi2/`](relay/mixi2/) を動かします。メッセージが届くと Worker が起動し、それ以外のときは停止しています。Worker からしか接続できません。mixi2 の投稿は 149 字までなので、中継サーバーは位置情報の行を残し、メッセージを短くして投稿文を組み立て直します。
-
-**Workers Paid** プランが必要です（Containers は無料プランでは使えません）。コンテナのイメージは、デプロイのときに Cloudflare が作ります（パソコンからデプロイする場合は、そのパソコンで [Docker](https://docs.docker.com/get-started/get-docker/) が動いている必要があります）。
-
-1. [mixi2 Developer Platform](https://developer.mixi.social/) で利用を申請してアプリケーションを作り、**クライアント ID** と **クライアントシークレット** を控えます。
-2. GitHub の自分のリポジトリで、`wrangler.toml` の末尾に次を追加してコミットします。Cloudflare がコンテナと一緒にデプロイします。
-
-   ```toml
-   # mixi2：relay/mixi2 を Cloudflare Container で動かす
-   [[containers]]
-   class_name = "Mixi2Relay"
-   scheduling_policy = "durable_object"
-   
-   [containers.images.base]
-   dockerfile = "./relay/mixi2/Dockerfile"
-   
-   [[durable_objects.bindings]]
-   name = "MIXI2_RELAY"
-   class_name = "Mixi2Relay"
-   
-   [exports.Mixi2Relay]
-   type = "durable-object"
-   storage = "sqlite"
-   ```
-
-3. Worker に設定を追加します。
-
-   | 変数 | 種類 | 必須 | 値 |
-   |---|---|---|---|
-   | `MIXI2_CLIENT_ID` | テキスト | 必須 | クライアント ID |
-   | `MIXI2_CLIENT_SECRET` | シークレット | 必須 | クライアントシークレット |
-
-   変更した設定は、次にコンテナが起動したときに反映されます。コンテナは最後のメッセージから 2 分で停止します。
-
-**有料プランを使わない場合：** 手順 2・3 の代わりに、Node.js 20.19 以上または Docker イメージを動かせて HTTPS で公開できるほかの環境（Cloud Run、Fly.io、Render、自分のサーバーなど）で `relay/mixi2/` を動かし、Webhook としてつなぎます。
-
-1. 長いランダムなトークンを作ります（例：`node -e "console.log(crypto.randomUUID())"`）。
-2. 環境変数 `MIXI2_CLIENT_ID`、`MIXI2_CLIENT_SECRET`、`RELAY_TOKEN`（そのトークン）を設定して `relay/mixi2/` をデプロイします。Google Cloud Run の例：
-
-   ```sh
-   gcloud run deploy inreach-mixi2 --source relay/mixi2 --allow-unauthenticated \
-     --set-env-vars MIXI2_CLIENT_ID=…,MIXI2_CLIENT_SECRET=…,RELAY_TOKEN=…
-   ```
-
-   自分のサーバーでは、`relay/mixi2/` で `npm install` のあと `npm start` を実行します（`PORT` で待ち受けます。初期値は 8080）。
-3. Worker の `WEBHOOK_URL`（シークレット）に `https://<中継サーバー>/?token=<RELAY_TOKEN>` を追加します。ほかの Webhook もある場合は、`WEBHOOK_URL` にスペース区切りですべて入れます。
-
-</details>
-
 ### 投稿先を追加する
 
-投稿先は `worker/destinations/` に 1 つずつファイルがあり、必要な設定と投稿の方法が書かれています。`mastodon.ts` などをコピーしてサービスに合わせて書き換え、`worker/destinations/index.ts` の一覧に追加してください。
+投稿先は `worker/destinations/` に 1 つずつファイルがあり、それぞれ `Destination` オブジェクトを export しています（同じフォルダの `http.ts` は JSON を送るための共通処理、`index.ts` は投稿先の一覧です）。オブジェクトには次の 3 つがあります。
+
+- `name`：ログに表示する名前。
+- `configured(env)`：必要な設定が `env` にそろっているときに `true` を返します。`true` のときだけその投稿先が使われます。
+- `post(post, env)`：`post.text` を投稿し、ログ用の ID か URL を返し、失敗したときは例外を投げます。<br>`post` には `text` のほか、組み立てる元になった `message`・`latitude`・`longitude`・`geohash`・`maidenhead`・`mapUrl`・`isFallbackLocation` もあり、独自の本文を作るサービスで使えます。<br>inReach のメッセージでないメールのときは、これらは `null`（`isFallbackLocation` は `false`）です。
+
+`post.text` は X と Bluesky の文字数制限に合わせて短くしてあります。<br>
+制限がもっと短いサービスでは、投稿先の中でさらに短くしてください。<br>
+サービスに合わせて書き換え、`worker/destinations/index.ts`で`import`して`DESTINATIONS`に追加してください。
 
 ---
 
