@@ -1,39 +1,18 @@
 /**
- * X (Twitter) post length, counted the way X counts it (twitter-text v3):
- * - Latin, symbols etc. (U+0000–U+10FF and a few punctuation ranges) = 1
- * - everything else, including Japanese and emoji = 2
- * - every URL = 23, however long
- * The limit is 280. `string.length` is not a valid check: a 200-character
- * Japanese post is 200 by `length` but 400 for X.
+ * X (Twitter) post length, counted by X's own twitter-text library:
+ * Latin = 1, Japanese and emoji (even ZWJ sequences) = 2, every URL or bare
+ * domain such as `garmin.com` = 23. The limit is 280. `string.length` is not a
+ * valid check: a 200-character Japanese post is 200 by `length` but 400 for X.
  */
 
+// CommonJS package (with an ESM build for bundlers): its functions are on the default import.
+import twitterText from "twitter-text";
+
 export const TWEET_MAX_LENGTH = 280;
-const URL_LENGTH = 23;
-// twitter-text ends a URL at the first non-ASCII character (e.g. Japanese text written right after it).
-const URL_RE = /https?:\/\/[\x21-\x7e]+/g;
-
-/** Code point ranges that count as 1 (from twitter-text's default config). */
-const LIGHT_RANGES: Array<[number, number]> = [
-  [0x0000, 0x10ff],
-  [0x2000, 0x200d],
-  [0x2010, 0x201f],
-  [0x2032, 0x2037],
-];
-
-function weightOf(codePoint: number): number {
-  return LIGHT_RANGES.some(([lo, hi]) => codePoint >= lo && codePoint <= hi) ? 1 : 2;
-}
 
 /** Length of `text` as X counts it. */
 export function tweetLength(text: string): number {
-  const normalized = text.normalize("NFC");
-  let length = 0;
-  const withoutUrls = normalized.replace(URL_RE, () => {
-    length += URL_LENGTH;
-    return "";
-  });
-  for (const ch of withoutUrls) length += weightOf(ch.codePointAt(0)!);
-  return length;
+  return twitterText.parseTweet(text).weightedLength;
 }
 
 /**
@@ -45,14 +24,40 @@ export function tweetLength(text: string): number {
 export function fitTweet(head: string, tail: string[] = [], max = TWEET_MAX_LENGTH, ellipsis = "…"): string {
   const join = (h: string, t: string[]) => [h, ...t].filter((line) => line !== "").join("\n");
 
-  const full = join(head, tail);
-  if (tweetLength(full) <= max) return full;
-
   // Cut on grapheme boundaries so emoji sequences and combining marks are not split.
-  const chars = Array.from(new Intl.Segmenter().segment(head), (s) => s.segment);
-  for (let n = chars.length - 1; n > 0; n--) {
-    const candidate = join(chars.slice(0, n).join("").trimEnd() + ellipsis, tail);
-    if (tweetLength(candidate) <= max) return candidate;
+  let chars = Array.from(new Intl.Segmenter().segment(head), (s) => s.segment);
+  // twitter-text's URL matching is quadratic on long non-ASCII runs (20k Japanese
+  // characters ≈ 4 s), so only ever count the first 2 × max characters. Every
+  // character weighs at least 1 except inside URLs, so a longer head cannot fit anyway
+  // unless it is mostly URLs.
+  if (chars.length > 2 * max) {
+    chars = chars.slice(0, 2 * max);
+  } else {
+    const full = join(head, tail);
+    if (tweetLength(full) <= max) return full;
+  }
+  const cut = (n: number) => join(chars.slice(0, n).join("").trimEnd() + ellipsis, tail);
+  const fits = (n: number) => tweetLength(cut(n)) <= max;
+
+  // Find the longest prefix that fits without re-counting after every removed
+  // character: double the length until it stops fitting, then binary search.
+  // Each count only covers about as much text as the post itself, however long the head is.
+  if (chars.length > 1 && fits(1)) {
+    let lo = 1; // fits
+    let hi = chars.length - 1; // longest candidate (the full head did not fit)
+    for (let n = 2; n < hi; n *= 2) {
+      if (!fits(n)) {
+        hi = n - 1;
+        break;
+      }
+      lo = n;
+    }
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (fits(mid)) lo = mid;
+      else hi = mid - 1;
+    }
+    return cut(lo);
   }
   if (tail.length > 0) return fitTweet(head, tail.slice(0, -1), max, ellipsis);
   return "";
