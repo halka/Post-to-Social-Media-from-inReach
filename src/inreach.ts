@@ -102,7 +102,7 @@ export function extractMessageText(body: string): string {
     .trim();
 }
 /**
- * Extract "Lat 41.796132 Lon 140.76082" as decimal degrees. Garmin's coordinate
+ * Extract "Lat 41.191919 Lon 141.514810" as decimal degrees. Garmin's coordinate
  * line comes after the user's message, so the last match wins: "Lat … Lon …"
  * typed in the message cannot replace the real position.
  */
