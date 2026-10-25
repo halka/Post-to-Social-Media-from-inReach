@@ -101,8 +101,14 @@ export function extractMessageText(body: string): string {
     .join("\n")
     .trim();
 }
+/**
+ * Extract "Lat 41.191919 Lon 141.514810" as decimal degrees. Garmin's coordinate
+ * line comes after the user's message, so the last match wins: "Lat … Lon …"
+ * typed in the message cannot replace the real position.
+ */
 export function extractCoordinates(body: string): { latitude: number | null; longitude: number | null } {
-  const m = /Lat\s*[:=]?\s*(-?\d+(?:\.\d+)?)\s*,?\s*Lon\s*[:=]?\s*(-?\d+(?:\.\d+)?)/i.exec(body);
+  const matches = Array.from(body.matchAll(/Lat\s*[:=]?\s*(-?\d+(?:\.\d+)?)\s*,?\s*Lon\s*[:=]?\s*(-?\d+(?:\.\d+)?)/gi));
+  const m = matches.at(-1);
   if (!m) return { latitude: null, longitude: null };
   const latitude = Number(m[1]);
   const longitude = Number(m[2]);

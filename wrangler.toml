@@ -1,5 +1,7 @@
 name = "inreach2socialmedia"
 main = "worker/index.ts"
 compatibility_date = "2026-10-01"
+# x-api-post (through its oauth dependency) and twitter-text import Node built-ins such as crypto and http.
+compatibility_flags = ["nodejs_compat"]
 # Keep the variables set in the Cloudflare dashboard when deploying again.
 keep_vars = true

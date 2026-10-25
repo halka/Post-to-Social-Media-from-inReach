@@ -4,7 +4,8 @@ import type { Destination } from './index.js';
 /** X (Twitter), with an app's OAuth 1.0a keys. */
 export const x: Destination = {
 	name: 'X',
-	configured: (env) => Boolean(env.X_API_KEY),
+	configured: (env) =>
+		Boolean(env.X_API_KEY && env.X_API_SECRET && env.X_API_ACCESS_TOKEN && env.X_API_ACCESS_TOKEN_SECRET),
 	async post({ text }, env) {
 		const client = new xApiPost({
 			X_API_KEY: env.X_API_KEY || '',

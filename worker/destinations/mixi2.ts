@@ -1,3 +1,4 @@
+import { postJson } from './http.js';
 import type { Destination } from './index.js';
 
 /**
@@ -9,13 +10,7 @@ export const mixi2: Destination = {
 	name: 'mixi2',
 	configured: (env) => Boolean(env.MIXI2_RELAY && env.MIXI2_CLIENT_ID && env.MIXI2_CLIENT_SECRET),
 	async post(post, env) {
-		const response: Response = await env.MIXI2_RELAY.getByName('mixi2').fetch('http://container/', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(post),
-		});
-		const data: any = await response.json().catch(() => ({}));
-		if (!response.ok) throw new Error(`HTTP ${response.status} ${data.error ?? ''}`.trim());
+		const data = await postJson('http://container/', post, { fetcher: env.MIXI2_RELAY.getByName('mixi2') });
 		return data.id;
 	},
 };
