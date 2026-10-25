@@ -1,10 +1,12 @@
 # Post to Social Media from inReach
 
+> This is a Cloudflare Worker that receives Garmin inReach messages by email and cross-posts them, with geohash, grid locator and a map link, to X, Bluesky, Mastodon, Misskey, mixi2, Nostr, APRS-IS and webhooks — no cellphone signal required.
+>
+> Garmin inReach からメールで届いたメッセージを、ジオハッシュ・グリッドロケーター・地図リンク付きで X、Bluesky、Mastodon、Misskey、mixi2、Nostr、APRS-IS、Webhook へ同時投稿する Cloudflare Worker です。携帯電話の電波が届かない場所から投稿できます。
+
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/inReach2socialmedia)
 
-[English](#english) | [日本語](#日本語) | [Author](#author) · [License](#license) · [Contributing](#contributing)
-
----
+[English](#english) | [日本語](#日本語)
 
 ## English
 
