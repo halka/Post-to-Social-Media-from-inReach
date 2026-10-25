@@ -1,4 +1,4 @@
-name = "inreach2socialmedia"
+name = "post-to-social-media-from-inreach"
 main = "worker/index.ts"
 compatibility_date = "2026-10-01"
 # x-api-post (through its oauth dependency) and twitter-text import Node built-ins such as crypto and http.

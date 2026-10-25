@@ -55,19 +55,19 @@ You need a Cloudflare account with a domain that has Email Routing enabled, a Gi
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/Post-to-Social-Media-from-inReach)
 
-Cloudflare copies this repository to your GitHub account, then builds and deploys the Worker `inreach2socialmedia`. Each push to your copy deploys it again. All settings are made in the Cloudflare dashboard, so you do not need to edit any file.
+Cloudflare copies this repository to your GitHub account, then builds and deploys the Worker `post-to-social-media-from-inreach`. Each push to your copy deploys it again. All settings are made in the Cloudflare dashboard, so you do not need to edit any file.
 
-**2. Add the settings in the Cloudflare dashboard.** Go to **Workers & Pages → inreach2socialmedia → Settings → Variables and Secrets**, and click **Add** for each setting. Choose the type **Text** for ordinary values, **JSON** for lists, and **Secret** for passwords, tokens and keys. Click **Deploy** (or **Save**) to apply them.
+**2. Add the settings in the Cloudflare dashboard.** Go to **Workers & Pages → post-to-social-media-from-inreach → Settings → Variables and Secrets**, and click **Add** for each setting. Choose the type **Text** for ordinary values, **JSON** for lists, and **Secret** for passwords, tokens and keys. Click **Deploy** (or **Save**) to apply them.
 
 - `permittedAddresses` (JSON) is required: the sender addresses that may post, such as `["sender@example.com"]`.
 - If Garmin's notification emails do not arrive in Japanese, also set `INREACH_SUBJECT_TRIGGER`. See [Settings](#settings).
 - Then add the settings of each destination you want. See [Destinations](#destinations).
 
-**3. Route an email address to the Worker.** In the Cloudflare dashboard, open your domain, go to **Email → Email Routing → Routing rules**, and create a custom address (for example `inreach-xxxx@example.com`) with the action **Send to a Worker** → `inreach2socialmedia`. Choose an address that is hard to guess.
+**3. Route an email address to the Worker.** In the Cloudflare dashboard, open your domain, go to **Email → Email Routing → Routing rules**, and create a custom address (for example `inreach-xxxx@example.com`) with the action **Send to a Worker** → `post-to-social-media-from-inreach`. Choose an address that is hard to guess.
 
 **4. Send a message.** On the inReach (or in the Garmin Explore app), add that address as a contact and send it a message. It is posted within a minute or so.
 
-If nothing is posted, open the Worker's **Logs** tab in the dashboard (**Workers & Pages → inreach2socialmedia → Logs**), start the live log, and send another message. It shows each destination's result.
+If nothing is posted, open the Worker's **Logs** tab in the dashboard (**Workers & Pages → post-to-social-media-from-inreach → Logs**), start the live log, and send another message. It shows each destination's result.
 
 <details>
 <summary>Deploying from your computer instead</summary>
@@ -186,7 +186,7 @@ Your position appears on APRS maps such as [aprs.fi](https://aprs.fi/), with the
 | `APRS_PASSCODE` | Secret | Required | The APRS-IS passcode for the callsign |
 | `APRS_SERVER` | Text | Optional | One of the servers below. Default: `rotate.aprs2.net:14580` |
 | `APRS_SYMBOL` | Text | Optional | One of the map symbols below, e.g. `H[`. Default: `/[` |
-| `APRS_APP_NAME` | Text | Optional | The software name sent when logging in to APRS-IS, shown on the server's status page. Spaces become `-`. Default: `inReach2socialmedia` |
+| `APRS_APP_NAME` | Text | Optional | The software name sent when logging in to APRS-IS, shown on the server's status page. Spaces become `-`. Default: `Post-to-Social-Media-from-inReach` |
 
 - The report carries the position, so the comment is only the message: no geohash, grid or map link. It is ASCII only: full-width letters and digits become half-width, and Japanese and other non-ASCII characters are removed. It is put on one line and cut to 43 characters (the APRS limit). A message written only in Japanese is sent as the position with no comment.
 - Messages without a GPS fix are not sent to APRS, so the fallback location is never reported as your position.
@@ -390,19 +390,19 @@ GPS の位置が取れなかったメッセージ（Garmin が `Lat 0 Lon 0` を
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/halka/Post-to-Social-Media-from-inReach)
 
-Cloudflare がこのリポジトリを自分の GitHub アカウントにコピーし、Worker `inreach2socialmedia` をビルドしてデプロイします。コピーしたリポジトリに push するたびに、もう一度デプロイされます。設定はすべて Cloudflare のダッシュボードで行うので、ファイルを編集する必要はありません。
+Cloudflare がこのリポジトリを自分の GitHub アカウントにコピーし、Worker `post-to-social-media-from-inreach` をビルドしてデプロイします。コピーしたリポジトリに push するたびに、もう一度デプロイされます。設定はすべて Cloudflare のダッシュボードで行うので、ファイルを編集する必要はありません。
 
-**2. Cloudflare のダッシュボードで設定を追加する。** **Workers & Pages → inreach2socialmedia → 設定（Settings）→ 変数とシークレット（Variables and Secrets）** を開き、設定ごとに **追加（Add）** します。通常の値は種類を **テキスト（Text）**、一覧は **JSON**、パスワード・トークン・鍵は **シークレット（Secret）** にします。最後に **デプロイ（Deploy）**（または **保存**）で反映します。
+**2. Cloudflare のダッシュボードで設定を追加する。** **Workers & Pages → post-to-social-media-from-inreach → 設定（Settings）→ 変数とシークレット（Variables and Secrets）** を開き、設定ごとに **追加（Add）** します。通常の値は種類を **テキスト（Text）**、一覧は **JSON**、パスワード・トークン・鍵は **シークレット（Secret）** にします。最後に **デプロイ（Deploy）**（または **保存**）で反映します。
 
 - `permittedAddresses`（JSON）は必須です。投稿を許可する送信元アドレスを `["sender@example.com"]` のように書きます。
 - Garmin の通知メールが日本語以外で届く場合は、`INREACH_SUBJECT_TRIGGER` も設定します。[基本設定](#基本設定)を参照してください。
 - 続けて、使う投稿先の設定を追加します。[投稿先](#投稿先)を参照してください。
 
-**3. メールアドレスを Worker に振り分ける。** Cloudflare のダッシュボードでドメインを開き、**Email → Email Routing → Routing rules** でカスタムアドレス（例：`inreach-xxxx@example.com`）を作り、アクションを **Send to a Worker** → `inreach2socialmedia` にします。推測されにくいアドレスにしてください。
+**3. メールアドレスを Worker に振り分ける。** Cloudflare のダッシュボードでドメインを開き、**Email → Email Routing → Routing rules** でカスタムアドレス（例：`inreach-xxxx@example.com`）を作り、アクションを **Send to a Worker** → `post-to-social-media-from-inreach` にします。推測されにくいアドレスにしてください。
 
 **4. メッセージを送る。** inReach（または Garmin Explore アプリ）でそのアドレスを連絡先に追加し、メッセージを送ります。1 分ほどで投稿されます。
 
-投稿されない場合は、ダッシュボードで Worker の **ログ（Logs）** タブ（**Workers & Pages → inreach2socialmedia → Logs**）を開いてライブログを開始し、もう一度メッセージを送ってください。投稿先ごとの結果が表示されます。
+投稿されない場合は、ダッシュボードで Worker の **ログ（Logs）** タブ（**Workers & Pages → post-to-social-media-from-inreach → Logs**）を開いてライブログを開始し、もう一度メッセージを送ってください。投稿先ごとの結果が表示されます。
 
 <details>
 <summary>パソコンからデプロイする場合</summary>
@@ -538,7 +538,7 @@ Bluesky の **設定 → プライバシーとセキュリティ → アプリ�
 | `APRS_PASSCODE` | シークレット | 必須 | コールサインの APRS-IS パスコード |
 | `APRS_SERVER` | テキスト | 任意 | 下のサーバーのどれか。初期値は `rotate.aprs2.net:14580` |
 | `APRS_SYMBOL` | テキスト | 任意 | 下の地図のシンボルのどれか（例：`H[`）。初期値は `/[` |
-| `APRS_APP_NAME` | テキスト | 任意 | APRS-IS にログインするときに送るアプリケーション名。サーバーの状態ページに表示されます。スペースは `-` に変わります。初期値は `inReach2socialmedia` |
+| `APRS_APP_NAME` | テキスト | 任意 | APRS-IS にログインするときに送るアプリケーション名。サーバーの状態ページに表示されます。スペースは `-` に変わります。初期値は `Post-to-Social-Media-from-inReach` |
 
 - 位置はレポート自体に含まれるので、コメントはメッセージだけです（geohash、グリッドロケーター、地図のリンクは送りません）。コメントは英数字などの ASCII 文字だけにします。全角の英数字は半角に変え、日本語などの ASCII 以外の文字は取り除きます。1 行にまとめ、43 字（APRS の上限）で切ります。日本語だけのメッセージは、コメントなしで位置だけを送ります。
 - GPS の位置が取れなかったメッセージは APRS に送りません。代わりの座標（皇居）を現在地として報告することはありません。

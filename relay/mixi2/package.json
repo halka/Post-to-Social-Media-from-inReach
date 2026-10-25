@@ -1,5 +1,5 @@
 {
-  "name": "inreach2socialmedia-mixi2-relay",
+  "name": "post-to-social-media-from-inreach-mixi2-relay",
   "version": "0.1.0",
   "private": true,
   "description": "Receive the Worker's webhook and post it to mixi2",
