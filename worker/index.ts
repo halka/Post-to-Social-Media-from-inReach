@@ -1,5 +1,6 @@
 import * as PostalMime from 'postal-mime';
 import { DESTINATIONS } from './destinations/index.js';
+import { listVar } from './list-var.js';
 import { buildPost } from './post-text.js';
 
 // The Durable Object that runs the mixi2 relay container; see wrangler.toml in README.md.
@@ -24,16 +25,15 @@ export default {
 		const subject = email.subject ?? '';
 
 		// Check sender is allowed
-		// `allowed` is JSON like {"address": ["a@example.com"]}; addresses are compared case-insensitively.
-		let allowed: string[] = [];
+		// `permittedAddresses` is a list of addresses: a JSON array such as ["a@example.com"], or the original
+		// {"address": [...]}, or comma-separated text. Addresses are compared case-insensitively.
+		let permittedAddresses: string[] = [];
 		try {
-			const address = JSON.parse(env.allowed ?? '{}')?.address;
-			if (Array.isArray(address)) allowed = address.map((a: unknown) => String(a).toLowerCase());
-			else console.error('Invalid allowed: "address" must be an array');
+			permittedAddresses = listVar(env.permittedAddresses, 'address').map((a) => a.toLowerCase());
 		} catch (error) {
-			console.error('Invalid allowed JSON:', error);
+			console.error('Invalid permittedAddresses:', error);
 		}
-		if (from === '' || !allowed.includes(from.toLowerCase())) {
+		if (from === '' || !permittedAddresses.includes(from.toLowerCase())) {
 			message.setReject(`Sender not allowed: ${from}`);
 			return;
 		}

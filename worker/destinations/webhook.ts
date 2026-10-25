@@ -1,8 +1,9 @@
+import { listVar } from '../list-var.js';
 import type { Destination } from './index.js';
 
 /**
- * POST the post as JSON to each URL in WEBHOOK_URL, separated by spaces, commas
- * or newlines:
+ * POST the post as JSON to each URL in WEBHOOK_URL (a JSON array, or URLs
+ * separated by spaces, commas or newlines):
  *   { text, content, message, latitude, longitude, geohash, maidenhead, mapUrl }
  * `text` and `content` are both the finished post text: `text` is what Slack
  * incoming webhooks read and `content` is what Discord's read. The rest are its
@@ -12,7 +13,7 @@ export const webhook: Destination = {
 	name: 'Webhook',
 	configured: (env) => Boolean(env.WEBHOOK_URL),
 	async post(post, env) {
-		const urls = String(env.WEBHOOK_URL).split(/[\s,]+/).filter(Boolean);
+		const urls = listVar(env.WEBHOOK_URL);
 		const body = JSON.stringify({ ...post, content: post.text });
 		const results = await Promise.allSettled(
 			urls.map(async (url) => {

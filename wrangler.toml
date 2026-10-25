@@ -1,0 +1,5 @@
+name = "inreach2socialmedia"
+main = "worker/index.ts"
+compatibility_date = "2026-10-01"
+# Keep the variables set in the Cloudflare dashboard when deploying again.
+keep_vars = true

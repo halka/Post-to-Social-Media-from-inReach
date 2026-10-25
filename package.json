@@ -16,7 +16,8 @@
     "nostr-tools": "^2.25.2",
     "postal-mime": "^4.1.4",
     "twitter-text": "^3.1.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "wrangler": "^4.149.0"
   },
   "dependencies": {
     "@amrato/maidenhead-ts": "^2.0.0",

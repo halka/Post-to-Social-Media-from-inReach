@@ -2,6 +2,7 @@ import { finalizeEvent } from 'nostr-tools/pure';
 import type { VerifiedEvent } from 'nostr-tools/pure';
 import { decode } from 'nostr-tools/nip19';
 import { hexToBytes } from 'nostr-tools/utils';
+import { listVar } from '../list-var.js';
 import type { Destination } from './index.js';
 
 export const DEFAULT_NOSTR_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://yabu.me'];
@@ -64,7 +65,8 @@ export const nostr: Destination = {
 			{ kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [], content: text },
 			nostrSecretKey(env.NOSTR_PRIVATE_KEY),
 		);
-		const relays = env.NOSTR_RELAYS ? String(env.NOSTR_RELAYS).split(/[\s,]+/).filter(Boolean) : DEFAULT_NOSTR_RELAYS;
+		const configured = listVar(env.NOSTR_RELAYS);
+		const relays = configured.length > 0 ? configured : DEFAULT_NOSTR_RELAYS;
 		const results = await Promise.allSettled(relays.map((relay) => publish(relay, event)));
 		const failures = results.flatMap((r) => (r.status === 'rejected' ? [String(r.reason)] : []));
 		// One relay that stores the note is enough for it to be seen.
