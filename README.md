@@ -175,7 +175,7 @@ It counts as posted when at least one relay accepts it.
 <details>
 <summary><strong>APRS</strong></summary>
 
-> [!CAUTION]
+> [!WARNING]
 > **You need a valid amateur radio license.** Follow the radio regulations of your country. In Japan, for example, an operator must carry their radio operator license while operating (Radio Act Enforcement Regulations, Article 38, Paragraph 11).
 
 Your position appears on APRS maps such as [aprs.fi](https://aprs.fi/), with the message as the comment. This needs an amateur radio callsign and its APRS-IS passcode.
@@ -375,7 +375,7 @@ https://maps.google.com/?q=35.683851,139.753973
 
 - inReach で入力したメッセージ
 - その場所の [geohash](https://ja.wikipedia.org/wiki/ジオハッシュ)
-- その場所の [Maidenhead ロケーター](https://en.wikipedia.org/wiki/Maidenhead_Locator_System)（グリッドロケーター）
+- その場所の [グリッドロケーター](https://en.wikipedia.org/wiki/Maidenhead_Locator_System)（グリッドロケーター）
 - その場所の Google マップのリンク
 
 すべての投稿先に同じ文を送るため、最も厳しい制限に収まるように調整します。X の 280 字（[twitter-text](https://github.com/twitter/twitter-text) を使って X と同じ方法で数えます。日本語と絵文字は 2、URL やドメイン名は長さに関係なく 23）と、Bluesky の 300 字です。長すぎる場合はメッセージを短くして末尾を「…」にします。位置情報の行は残します。
