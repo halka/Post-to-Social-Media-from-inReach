@@ -175,11 +175,11 @@ It counts as posted when at least one relay accepts it.
 <details>
 <summary><strong>APRS</strong></summary>
 
+Your position appears on APRS maps such as [aprs.fi](https://aprs.fi/), with the message as the comment. This needs an amateur radio callsign and its APRS-IS passcode.
+
 > [!CAUTION]
 > **You need a valid amateur radio license.**
 > Follow the radio regulations of your country. In Japan, for example, an operator must carry their radio operator license while operating (Radio Act Enforcement Regulations, Article 38, Paragraph 11).
-
-Your position appears on APRS maps such as [aprs.fi](https://aprs.fi/), with the message as the comment. This needs an amateur radio callsign and its APRS-IS passcode.
 
 | Variable | Type | Value |
 |---|---|---|
