@@ -6,9 +6,9 @@ compatibility_flags = ["nodejs_compat"]
 # Keep the variables set in the Cloudflare dashboard when deploying again.
 keep_vars = true
 [observability]
-enabled = true
+enabled = false
 head_sampling_rate = 1
-redact_query_string = true
+redact_query_string = false
 
 [observability.logs]
 enabled = true
