@@ -121,8 +121,8 @@ Create an app in the [X developer portal](https://developer.x.com/) with **Read 
 
 | Variable | Type | Required | Value |
 |---|---|---|---|
-| `X_API_KEY` | Secret | Required | API key |
-| `X_API_SECRET` | Secret | Required | API key secret |
+| `X_API_KEY` | Secret | Required | Consumer Key |
+| `X_API_SECRET` | Secret | Required | Secret Token |
 | `X_API_ACCESS_TOKEN` | Secret | Required | Access token |
 | `X_API_ACCESS_TOKEN_SECRET` | Secret | Required | Access token secret |
 
@@ -484,8 +484,8 @@ Worker の **設定 → 変数とシークレット** に、示した種類で�
 
 | 変数 | 種類 | 必須 | 値 |
 |---|---|---|---|
-| `X_API_KEY` | シークレット | 必須 | API キー |
-| `X_API_SECRET` | シークレット | 必須 | API キーシークレット |
+| `X_API_KEY` | シークレット | Consumer Key |  |
+| `X_API_SECRET` | シークレット | 必須 | Secret Token |
 | `X_API_ACCESS_TOKEN` | シークレット | 必須 | アクセストークン |
 | `X_API_ACCESS_TOKEN_SECRET` | シークレット | 必須 | アクセストークンシークレット |
 

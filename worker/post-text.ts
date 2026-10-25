@@ -24,7 +24,7 @@ export interface Post {
 	latitude: number | null;
 	longitude: number | null;
 	geohash: string | null;
-	maidenhead: string | null;
+	grid: string | null;
 	mapUrl: string | null;
 	/** True when the message had no GPS fix and the location is `fallback`, not where it was sent from. */
 	isFallbackLocation: boolean;
@@ -44,13 +44,13 @@ export function buildPost(
 	body: string,
 	{
 		geohashPrecision = 9,
-		maidenheadPrecision = 6,
+		gridPrecision: gridPrecision = 6,
 		subjectTrigger,
 		maxPostLength = TWEET_MAX_LENGTH,
 		fallback = IMPERIAL_PALACE,
 	}: InReachParseOptions & { maxPostLength?: number; fallback?: Location } = {},
 ): Post {
-	const inReach = parseInReachFields({ subject, text: body }, { geohashPrecision, maidenheadPrecision, subjectTrigger });
+	const inReach = parseInReachFields({ subject, text: body }, { geohashPrecision, gridPrecision: gridPrecision, subjectTrigger });
 	if (!inReach) {
 		// Not an inReach message: first non-empty line, as before.
 		const text = fitTweet(body.split(/\r?\n/).find((line) => line.trim() !== '') ?? '', [], maxPostLength);
@@ -60,7 +60,7 @@ export function buildPost(
 			latitude: null,
 			longitude: null,
 			geohash: null,
-			maidenhead: null,
+			grid: null,
 			mapUrl: null,
 			isFallbackLocation: false,
 		};
@@ -72,8 +72,8 @@ export function buildPost(
 		: { latitude: inReach.latitude!, longitude: inReach.longitude! };
 	// The parser already encoded real coordinates; only the fallback needs encoding here.
 	const geohash = inReach.geohash ?? encodeGeohash(latitude, longitude, geohashPrecision);
-	const maidenhead = inReach.maidenhead ?? encodeMaidenhead(latitude, longitude, maidenheadPrecision);
+	const grid = inReach.grid ?? encodeMaidenhead(latitude, longitude, gridPrecision);
 	const mapUrl = `https://maps.google.com/?q=${latitude},${longitude}`;
-	const text = fitTweet(inReach.message, [`Geohash: ${geohash}`, `Grid: ${maidenhead}`, mapUrl], maxPostLength);
-	return { text, message: inReach.message, latitude, longitude, geohash, maidenhead, mapUrl, isFallbackLocation };
+	const text = fitTweet(inReach.message, [`Geohash: ${geohash}`, `Grid: ${grid}`, mapUrl], maxPostLength);
+	return { text, message: inReach.message, latitude, longitude, geohash, grid, mapUrl, isFallbackLocation };
 }

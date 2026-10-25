@@ -15,7 +15,7 @@ export interface InReachMessage {
   /** Geohash of the coordinates (9 characters ≈ 5 m by default), or null without coordinates. */
   geohash: string | null;
   /** Maidenhead locator of the coordinates (6 characters by default), or null without coordinates. */
-  maidenhead: string | null;
+  grid: string | null;
   /** inreachlink.com URL for viewing the location / replying. */
   replyUrl: string | null;
   /** Decoded subject line. */
@@ -26,8 +26,8 @@ export interface InReachMessage {
 export interface InReachParseOptions {
   /** Geohash length, 1–12 (default 9). */
   geohashPrecision?: number;
-  /** Maidenhead locator length, 2, 4, 6, 8 or 10 (default 6). */
-  maidenheadPrecision?: number;
+  /** Grid locator length, 2, 4, 6, 8 or 10 (default 6). */
+  gridPrecision?: number;
   /** Subject fragment that identifies a notification (default INREACH_SUBJECT_TRIGGER). */
   subjectTrigger?: string;
 }
@@ -40,7 +40,7 @@ export interface InReachParseOptions {
 export function parseInReachContent(
   subject: string,
   body: string,
-  { geohashPrecision = 9, maidenheadPrecision = 6, subjectTrigger = INREACH_SUBJECT_TRIGGER }: InReachParseOptions = {},
+  { geohashPrecision = 9, gridPrecision: maidenheadPrecision = 6, subjectTrigger = INREACH_SUBJECT_TRIGGER }: InReachParseOptions = {},
 ): InReachMessage | null {
   const triggerAt = subject.indexOf(subjectTrigger);
   if (triggerAt === -1) return null;
@@ -53,7 +53,7 @@ export function parseInReachContent(
     latitude,
     longitude,
     geohash: latitude !== null && longitude !== null ? encodeGeohash(latitude, longitude, geohashPrecision) : null,
-    maidenhead: latitude !== null && longitude !== null ? encodeMaidenhead(latitude, longitude, maidenheadPrecision) : null,
+    grid: latitude !== null && longitude !== null ? encodeMaidenhead(latitude, longitude, maidenheadPrecision) : null,
     replyUrl: /https?:\/\/(?:[\w-]+\.)*inreachlink\.com\/[^\s<>"]+/.exec(text)?.[0] ?? null,
     subject,
   };
@@ -102,7 +102,7 @@ export function extractMessageText(body: string): string {
     .trim();
 }
 /**
- * Extract "Lat 41.191919 Lon 141.514810" as decimal degrees. Garmin's coordinate
+ * Extract Lat:xxx Lon:xxx as decimal degrees. Garmin's coordinate
  * line comes after the user's message, so the last match wins: "Lat … Lon …"
  * typed in the message cannot replace the real position.
  */

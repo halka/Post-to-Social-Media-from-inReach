@@ -20,7 +20,7 @@ export default {
 		const parser = new PostalMime.default();
 		const rawEmail = new Response(message.raw);
 		const email = await parser.parse(await rawEmail.arrayBuffer());
-		const from = email.from?.address ?? '';
+		const from = email.from.address ?? '';
 		const body = email.text ?? '';
 		const subject = email.subject ?? '';
 
@@ -42,7 +42,7 @@ export default {
 		// An empty trigger would match every subject, so treat it as unset.
 		const post = buildPost(subject, body, {
 			geohashPrecision: precisionVar('GEOHASH_PRECISION', env.GEOHASH_PRECISION, 9, (n) => n >= 1 && n <= 12),
-			maidenheadPrecision: precisionVar('MAIDENHEAD_PRECISION', env.MAIDENHEAD_PRECISION, 6, (n) => [2, 4, 6, 8, 10].includes(n)),
+			gridPrecision: precisionVar('GRID_PRECISION', env.GRID_PRECISION, 6, (n) => [2, 4, 6, 8, 10].includes(n)),
 			subjectTrigger: env.INREACH_SUBJECT_TRIGGER || undefined,
 		});
 		if (post.text === '') {
