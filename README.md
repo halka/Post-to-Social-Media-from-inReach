@@ -102,7 +102,7 @@ Add these under **Settings → Variables and Secrets** of the Worker, like the d
 | `permittedAddresses` | JSON | Required | — | The sender addresses that may post, as a JSON array, e.g. `["sender@example.com"]`. Use the address your inReach messages come from: send one message from the inReach to your own email address and look at its `From:`. Compared case-insensitively. Mail from any other sender is rejected. |
 | `INREACH_SUBJECT_TRIGGER` | Text | Optional | `さんからのinReachメッセージ` | Text in the subject that marks an inReach notification. The sender's name is the part of the subject before it. The default matches Garmin's Japanese notification. **If your notifications arrive in another language, set this** to the matching part of their subject, or each email is posted as plain text, without the location. |
 | `GEOHASH_PRECISION` | Text | Optional | `9` (about 5 m) | Geohash length, `1–12`. |
-| `MAIDENHEAD_PRECISION` | Text | Optional | `6` (5 × 2.5 arc minutes, about 7 × 5 km in Japan) | Maidenhead locator length: `2`, `4`, `6`, `8` or `10`. |
+| `GRID_PRECISION` | Text | Optional | `6` (5 × 2.5 arc minutes, about 7 × 5 km in Japan) | Maidenhead locator length: `2`, `4`, `6`, `8` or `10`. |
 
 > [!WARNING]
 > The sender check uses the email's `From:` header, which a sender can forge. Keep the receiving address private.
@@ -476,7 +476,7 @@ npx wrangler deploy
 | `permittedAddresses` | JSON | 必須 | — | 投稿を許可する送信元アドレスの JSON 配列（例：`["sender@example.com"]`）。<br>inReach のメッセージの送信元アドレスを使います。<br>送信元アドレスは、inReach から自分のメールアドレスにメッセージを 1 通送り、届いたメールの `From:` で確認できます。<br>大文字・小文字は区別しません。これ以外の送信元からのメールは拒否します。 |
 | `INREACH_SUBJECT_TRIGGER` | テキスト | 任意 | `さんからのinReachメッセージ` | inReach の通知メールだと判定するための、件名に含まれる文字列。<br>件名のこの文字列より前の部分を送信者名として使います。<br>初期値は Garmin の日本語の通知メールに合わせてあります。<br>**別の言語で届く場合は必ず設定してください。**<br>**設定しないと、メールの本文だけが位置情報なしで投稿されます。** |
 | `GEOHASH_PRECISION` | テキスト | 任意 | `9`（約 5 m） | geohash の桁数。1〜12。 |
-| `MAIDENHEAD_PRECISION` | テキスト | 任意 | `6`（経度 5 分 × 緯度 2.5 分、日本で約 7 × 5 km） | Maidenhead ロケーターの文字数。2・4・6・8・10 のいずれか。 |
+| `GRID_PRECISION` | テキスト | 任意 | `6`（経度 5 分 × 緯度 2.5 分、日本で約 7 × 5 km） | Maidenhead ロケーターの文字数。2・4・6・8・10 のいずれか。 |
 
 > [!WARNING]
 > 送信元のチェックにはメールの `From:` ヘッダーを使っています。<br>このヘッダーは送信者が偽装できるので、受信用アドレスは公開しないでください。
